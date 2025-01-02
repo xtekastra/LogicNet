@@ -1,4 +1,6 @@
 import os
+from dotenv import load_dotenv
+load_dotenv()
 import time
 import threading
 import datetime
@@ -6,6 +8,7 @@ import random
 import traceback
 import torch
 import requests
+from copy import deepcopy
 import bittensor as bt
 import logicnet as ln
 from neurons.validator.validator_proxy import ValidatorProxy
@@ -193,7 +196,7 @@ class Validator(BaseValidatorNeuron):
             )
             if not synapse:
                 continue
-            base_synapse = synapse.copy()
+            base_synapse = synapse.model_copy()
             synapse = synapse.miner_synapse()
             bt.logging.info(f"\033[1;34m🧠 Synapse to be sent to miners: {synapse}\033[0m")
             axons = [self.metagraph.axons[int(uid)] for uid in uids]
@@ -324,12 +327,10 @@ class Validator(BaseValidatorNeuron):
         ]
         num_batch = len(batched_uids_should_rewards)
 
-        synapses = [
-            synapse_type(category=category, timeout=timeout) for _ in range(num_batch)
-        ]
-        for synapse in synapses:
-            synapse = challenger(synapse)
-
+        ## clone one synapse to number_batch synapses
+        synapse = synapse_type(category=category, timeout=timeout)
+        synapse = challenger(synapse)
+        synapses = [deepcopy(synapse) for _ in range(num_batch)]
         return synapses, batched_uids_should_rewards
 
     def update_scores_on_chain(self):
@@ -378,7 +379,7 @@ class Validator(BaseValidatorNeuron):
             bt.logging.info(
                 "\033[1;32m🧠 Loading validator state from: " + path + "\033[0m"
             )
-            state = torch.load(path)
+            state = torch.load(path, weights_only=True)  # Set weights_only=True
             self.step = state["step"]
             all_uids_info = state["all_uids_info"]
             for k, v in all_uids_info.items():
