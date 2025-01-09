@@ -57,21 +57,37 @@ class Validator(BaseValidatorNeuron):
         
         base_urls = self.config.llm_client.base_urls.split(",")
         models = self.config.llm_client.models.split(",")
-        
+
         # Ensure the lists have enough elements
-        if len(base_urls) < 3 or len(models) < 3:
-            bt.logging.warning("base_urls or models configuration is incomplete. Please ensure they have just 3 entries.")
-            raise ValueError("base_urls or models configuration is incomplete. Please ensure they have just 3 entries.")
+        # if len(base_urls) < 3 or len(models) < 3:
+        #     bt.logging.warning("base_urls or models configuration is incomplete. Please ensure they have just 3 entries.")
+        #     raise ValueError("base_urls or models configuration is incomplete. Please ensure they have just 3 entries.")
+
+        if len(base_urls) < 1 or len(models) < 1:
+            bt.logging.warning(
+                "base_urls or models configuration is incomplete. Please ensure they have at least 1 entry."
+            )
+            raise ValueError(
+                "base_urls or models configuration is incomplete. Please ensure they have at least 1 entry."
+            )
         
         self.model_rotation_pool = {
-            "vllm": [base_urls[0].strip(), "xyz", models[0]],
+            # "vllm": [base_urls[0].strip(), "xyz", models[0]],
             "openai": [base_urls[1].strip(), openai_key, models[1]],
-            "togetherai": [base_urls[2].strip(), togetherai_key, models[2]],
+            # "togetherai": [base_urls[2].strip(), togetherai_key, models[2]],
         }
-        for key, value in self.model_rotation_pool.items():
-            if value[2] in model_blacklist:
-                bt.logging.warning(f"Model {value[2]} is blacklisted. Please use another model.")
-                self.model_rotation_pool[key] = "no use"
+        # for key, value in self.model_rotation_pool.items():
+        #     if value[2] in model_blacklist:
+        #         bt.logging.warning(f"Model {value[2]} is blacklisted. Please use another model.")
+        #         self.model_rotation_pool[key] = "no use"
+        
+        # Immediately blacklist if it's not "gpt-4o" and force it to be "gpt-4o"
+        if "gpt-4o" not in self.model_rotation_pool["openai"][2]:
+            bt.logging.warning(
+                f"Model must be gpt-4o. Found {self.model_rotation_pool['openai'][2]} instead."
+            )
+            bt.logging.info("Setting OpenAI model to gpt-4o.")
+            self.model_rotation_pool["openai"][2] = "gpt-4o"
         
         # Check if 'null' is at the same index in both cli lsts
         for i in range(3):
@@ -209,7 +225,7 @@ class Validator(BaseValidatorNeuron):
             )
             if not synapse:
                 continue
-            base_synapse = synapse.copy()
+            base_synapse = synapse.model_copy()
             synapse = synapse.miner_synapse()
             bt.logging.info(f"\033[1;34m🧠 Synapse to be sent to miners: {synapse}\033[0m")
             axons = [self.metagraph.axons[int(uid)] for uid in uids]
