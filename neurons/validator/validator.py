@@ -1,6 +1,7 @@
 import os
 from dotenv import load_dotenv
 load_dotenv()
+import pickle
 import time
 import threading
 import datetime
@@ -389,37 +390,59 @@ class Validator(BaseValidatorNeuron):
         bt.logging.success(f"\033[1;32m✅ Updated scores: {self.scores}\033[0m")
 
     def save_state(self):
-        """Saves the state of the validator to a file."""
-
-        torch.save(
-            {
-                "step": self.step,
-                "all_uids_info": self.miner_manager.all_uids_info,
-            },
-            self.config.neuron.full_path + "/state.pt",
-        )
-
-    def load_state(self):
-        """Loads the state of the validator from a file."""
-
-        # Load the state of the validator from file.
+        """Saves the state of the validator to a file using pickle."""
+        state = {
+            "step": self.step,
+            "all_uids_info": self.miner_manager.all_uids_info,
+        }
         try:
-            path = self.config.neuron.full_path + "/state.pt"
-            bt.logging.info(
-                "\033[1;32m🧠 Loading validator state from: " + path + "\033[0m"
-            )
-            state = torch.load(path, weights_only=True)  # Set weights_only=True
-            self.step = state["step"]
-            all_uids_info = state["all_uids_info"]
-            for k, v in all_uids_info.items():
-                v = v.to_dict()
-                self.miner_manager.all_uids_info[k] = MinerInfo(**v)
-            bt.logging.info("\033[1;32m✅ Successfully loaded state\033[0m")
+            # Open the file in write-binary mode
+            with open(self.config.neuron.full_path + "/state.pkl", "wb") as f:
+                pickle.dump(state, f)
+            bt.logging.info("State successfully saved to state.pkl")
         except Exception as e:
-            self.step = 0
-            bt.logging.info(
-                "\033[1;33m⚠️ Could not find previously saved state.\033[0m", e
-            )
+            bt.logging.error(f"Failed to save state: {e}")
+    def load_state(self):
+        """Loads state of  validator from a file, with fallback to .pt if .pkl is not found."""
+        # TODO: After a transition period, remove support for the old .pt format.
+        try:
+            path_pt = self.config.neuron.full_path + "/state.pt"
+            path_pkl = self.config.neuron.full_path + "/state.pkl"
+
+            # Try to load the newer .pkl format first
+            try:
+                bt.logging.info(f"Loading validator state from: {path_pkl}")
+                with open(path_pkl, "rb") as f:
+                    state = pickle.load(f)
+
+                # Restore state from pickle file
+                self.step = state["step"]
+                self.miner_manager.all_uids_info = state["all_uids_info"]
+                bt.logging.info("Successfully loaded state from .pkl file")
+                return  # Exit after successful load from .pkl
+
+            except Exception as e:
+                bt.logging.warning(f"Failed to load from .pkl format: {e}")
+
+            # If .pkl loading fails, try to load from the old .pt file (PyTorch format)
+            try:
+                bt.logging.info(f"Loading validator state from: {path_pt}")
+                state = torch.load(path_pt)
+
+                # Restore state from .pt file
+                self.step = state["step"]
+                self.miner_manager.all_uids_info = state["all_uids_info"]
+                bt.logging.info("Successfully loaded state from .pt file")
+
+            except Exception as e:
+                bt.logging.error(f"Failed to load from .pt format: {e}")
+                self.step = 0  # Default fallback when both load attempts fail
+                bt.logging.error("Could not find previously saved state or error loading it.")
+
+        except Exception as e:
+            self.step = 0  # Default fallback in case of an unknown error
+            bt.logging.error(f"Error loading state: {e}")
+
 
     def store_miner_infomation(self):
         miner_informations = self.miner_manager.to_dict()

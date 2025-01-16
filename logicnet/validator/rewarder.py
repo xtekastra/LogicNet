@@ -84,6 +84,14 @@ class LogicRewarder:
 
         total_uids = valid_uids + invalid_uids
         rewards = valid_rewards + invalid_rewards
+
+        for invalid_uid in invalid_uids:
+            reward_logs.append({
+                "task_uid": task_uid,
+                "similarity": 0,
+                "correctness": 0,
+                "process_time": 0,
+            })
         return total_uids, rewards, reward_logs
 
     def _get_correctness(
