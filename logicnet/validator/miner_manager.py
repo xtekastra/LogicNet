@@ -77,7 +77,7 @@ class MinerManager:
             query_axons,
             synapse,
             deserialize=False,
-            timeout=10,
+            timeout=60,
         )
         responses = {
             uid: response.response_dict
@@ -100,7 +100,13 @@ class MinerManager:
             miner_distribution = {}
             for uid, info in valid_miners_info.items():
                 # info = self.all_uids_info[int(uid)] if int(uid) in self.all_uids_info else MinerInfo(**info)
-                info = MinerInfo(**info)
+                miner_state = self.all_uids_info.setdefault(
+                    uid,
+                    {"scores": [], "reward_logs": []},
+                )
+                miner_state.category = info.get("category", "")
+                miner_state.epoch_volume = info.get("epoch_volume") if info.get("epoch_volume") else 512
+                info = miner_state
                 rate_limit_per_validator: dict = get_rate_limit_per_validator(
                     metagraph=self.validator.metagraph,
                     epoch_volume=info.epoch_volume,
