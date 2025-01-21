@@ -207,10 +207,10 @@ def add_args(cls, parser):
         )
 
         parser.add_argument(
-            "--miner.total_volume",
+            "--miner.epoch_volume",
             type=int,
             help="The total volume of requests to be served per 10 minutes",
-            default=40,
+            default=50,
         )
 
         parser.add_argument(
