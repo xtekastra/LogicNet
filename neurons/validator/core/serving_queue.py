@@ -110,9 +110,9 @@ class QueryQueue:
                 yield category, uids_to_query, should_rewards, time_to_sleep
 
     def random_should_reward(self, uid):
-        if uid not in self.synthentic_rewarded or self.synthentic_rewarded[uid] <= 10:
+        if uid not in self.synthentic_rewarded or self.synthentic_rewarded[uid] <= 5:
             return True
-        return random.random() < 0.3 ## 30% chance of rewarding
+        return random.random() < 0.2 ## 30% chance of rewarding
 
 
     def get_query_for_proxy(self, category):
