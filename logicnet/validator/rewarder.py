@@ -10,8 +10,8 @@ from logicnet.utils.model_selector import model_selector
 from logicnet.utils.regex_helper import extract_numerical_part
 from logicnet.validator.prompt import DETECT_TRICK_TEMPLATE, CORRECTNESS_TEMPLATE
 
-SIMILARITY_WEIGHT = 0.2
-CORRECTNESS_WEIGHT = 0.8
+SIMILARITY_WEIGHT = 0.3
+CORRECTNESS_WEIGHT = 0.7
 PROCESSING_TIME_WEIGHT = -0.1
 
 
