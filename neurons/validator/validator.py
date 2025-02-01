@@ -296,6 +296,8 @@ class Validator(BaseValidatorNeuron):
                
         ## compute mean value of rewards
         final_rewards = [sum(uid_rewards) / len(uid_rewards) for uid_rewards in uids_scores.values()]
+        ## set the rewards to 0 if the mean is negative
+        final_rewards = [reward if reward > 0 else 0 for reward in final_rewards]
 
         # Now proceed with the incentive rewards calculation on these mean attempts
         original_rewards = list(enumerate(final_rewards))

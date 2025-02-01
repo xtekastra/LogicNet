@@ -200,7 +200,7 @@ class LogicRewarder:
             ).choices[0].message.content.strip().lower()
             bt.logging.debug(f"[CORRECTNESS] Trick detection: {response_str}")
             if "yes" in response_str:
-                return 0
+                return -1
         except Exception as e:
             bt.logging.error(f"API request failed: {e}")
         
