@@ -128,21 +128,21 @@ class LogicRewarder:
             miner_answer = response.logic_answer.strip()
             bt.logging.info(f"[CORRECTNESS] Miner response: {miner_answer}")
             # Try programmatic comparison
-            score = self._compare_numerical_answers(ground_truth_answer, miner_answer)
-            if score is not None:
-                correctness.append(score)
-                bt.logging.info(f"[CORRECTNESS] Used programmatic comparison for response {idx} with score {score}")
-            else:
-                # Need LLM evaluation
-                bt.logging.info(f"[CORRECTNESS] Unable to use programmatic comparison. Need LLM evaluation for response {idx}")
-                correctness.append(0)  # Placeholder
-                batch_llm_inputs.append({
-                    "question": base_synapse.raw_logic_question,
-                    "ground_truth_answer": ground_truth_answer,
-                    "response": miner_answer
-                })
-                # log bt.debug for what score did the LLM give
-                indices_for_llm.append(idx)
+            # score = self._compare_numerical_answers(ground_truth_answer, miner_answer)
+            # if score is not None:
+            #     correctness.append(score)
+            #     bt.logging.info(f"[CORRECTNESS] Used programmatic comparison for response {idx} with score {score}")
+            # else:
+            # Need LLM evaluation
+            bt.logging.info(f"[CORRECTNESS] Unable to use programmatic comparison. Need LLM evaluation for response {idx}")
+            correctness.append(0)  # Placeholder
+            batch_llm_inputs.append({
+                "question": base_synapse.raw_logic_question,
+                "ground_truth_answer": ground_truth_answer,
+                "response": miner_answer
+            })
+            # log bt.debug for what score did the LLM give
+            indices_for_llm.append(idx)
 
         if batch_llm_inputs:
             with futures.ThreadPoolExecutor() as executor:
