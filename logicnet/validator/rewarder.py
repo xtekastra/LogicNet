@@ -78,10 +78,16 @@ class LogicRewarder:
 
                 # Scale up the reward
                 reward = reward / 2 + 0.5
-                bt.logging.info(
-                    f"[REWARDER][{task_uid}] similarity: {similarities[i]}, correctness: {correctness[i]}, process_time: {process_times[i]}, final_reward: {reward}"
-                )
                 valid_rewards.append(reward)
+
+                try:               
+                    ## show the reward, correctness, similarity for valid ids
+                    bt.logging.info(
+                        f"[REWARDER][{task_uid}] Valid_id: {valid_uids[i]} Reward: {reward}, Correctness: {correctness[i]}, Similarity: {similarities[i]}, process_time: {process_times[i]}, miner_response: {valid_responses[i].logic_answer.strip()} \n\n"
+                    )
+                except Exception as e:
+                    bt.logging.error(f"Error in logging reward for valid ids: {e}")
+
 
         total_uids = valid_uids + invalid_uids
         rewards = valid_rewards + invalid_rewards
