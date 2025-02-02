@@ -16,6 +16,8 @@ from neurons.validator.validator_proxy import ValidatorProxy
 from logicnet.base.validator import BaseValidatorNeuron
 from logicnet.validator import MinerManager, LogicChallenger, LogicRewarder, MinerInfo
 from logicnet.utils.wandb_manager import WandbManager
+from logicnet.utils.text_uts import modify_question
+from logicnet.protocol import LogicSynapse
 from neurons.validator.core.serving_queue import QueryQueue
 
 
@@ -231,12 +233,19 @@ class Validator(BaseValidatorNeuron):
             bt.logging.info(f"\033[1;34m🧠 Synapse to be sent to miners: {synapse}\033[0m")
             axons = [self.metagraph.axons[int(uid)] for uid in uids]
             bt.logging.debug(f"\033[1;34m🧠 Axon: {axons}\033[0m")
-            responses = dendrite.query(
-                axons=axons,
-                synapse=synapse,
-                deserialize=False,
-                timeout=self.categories[category]["timeout"],
-            )
+
+            ## loop for each miner, add noise and send the synapse to the miner
+            responses = []
+            for axon in axons:
+                noise_synapse = self.add_noise_to_synapse_question(synapse)
+                response = dendrite.query(
+                    axons=axon,
+                    synapse=noise_synapse,
+                    deserialize=False,
+                    timeout=self.categories[category]["timeout"],
+                )
+                responses.append(response)
+
             reward_responses = [
                 response
                 for response, should_reward in zip(responses, should_rewards)
@@ -268,6 +277,16 @@ class Validator(BaseValidatorNeuron):
                     self.miner_reward_logs.append(reward_logs)
                     self.miner_uids.append(uids) 
                     self.miner_scores.append(rewards)
+
+    def add_noise_to_synapse_question(self, synapse: ln.protocol.LogicSynapse):
+        """
+        Add noise to the synapse question.
+        """
+        ##copy the synapse
+        copy_synapse = deepcopy(synapse)
+        ##modify the question
+        copy_synapse.logic_question = modify_question(copy_synapse.logic_question)
+        return copy_synapse
 
     def assign_incentive_rewards(self, uids, rewards, reward_logs):
         """
