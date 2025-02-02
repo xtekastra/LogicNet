@@ -235,16 +235,22 @@ class Validator(BaseValidatorNeuron):
             bt.logging.debug(f"\033[1;34m🧠 Axon: {axons}\033[0m")
 
             ## loop for each miner, add noise and send the synapse to the miner
-            responses = []
-            for axon in axons:
-                noise_synapse = self.add_noise_to_synapse_question(synapse)
-                response = dendrite.query(
-                    axons=axon,
-                    synapse=noise_synapse,
-                    deserialize=False,
-                    timeout=self.categories[category]["timeout"],
-                )
-                responses.append(response)
+            # responses = []
+            # for axon in axons:
+            #     noise_synapse = self.add_noise_to_synapse_question(synapse)
+            #     response = dendrite.query(
+            #         axons=axon,
+            #         synapse=noise_synapse,
+            #         deserialize=False,
+            #         timeout=self.categories[category]["timeout"],
+            #     )
+            #     responses.append(response)
+            responses = dendrite.query(
+                axons=axons,
+                synapse=synapse,
+                deserialize=False,
+                timeout=self.categories[category]["timeout"],
+            )
 
             reward_responses = [
                 response
