@@ -174,6 +174,20 @@ class LogicRewarder:
                             correctness[idx] = 0.5
         return correctness
     
+    def clean_response(self, response: str):
+        """Clean the response by removing formatting characters.
+
+        Args:
+            response (str): Raw response.
+
+        Returns:
+            str: Cleaned response.
+        """
+        formatting_chars = ['$', '$$', '\\[', '\\]', '%', '-', "<", ">", "/", "*", "#", "!"]
+        for char in formatting_chars:
+            response = response.replace(char, ' ')
+        return response
+    
 
     def _get_correctness_by_llm(self, question: str, ground_truth: str, response: str, model_name: str, openai_client: openai.OpenAI):
         """Calculate the correctness score for a single response using LLM.
@@ -191,14 +205,22 @@ class LogicRewarder:
 
         ## check trick case
         try:
+            ## check with hard rule
             strings = ['a', 'b', 'c', 'd', 'e'] ## add to response to avoid gpt cached the output
+            cheat_words = ["miner_answer", "<example>", "</", "preference>", "<preference"]
+            for cheat_word in cheat_words:
+                if cheat_word in response.lower():
+                    return -1
+
+            clone_response = self.clean_response(response)
+            clone_response = str(random.choice(strings)) + clone_response + str(random.choice(strings))
             response_str = openai_client.chat.completions.create(
-                model=model_name,
+                model="gpt-4o",
                 messages=[
                     {
                         "role": "user",
                         "content": DETECT_TRICK_TEMPLATE.format(
-                            response=str(random.choice(strings)) + response + str(random.choice(strings))
+                            response=clone_response
                         ),
                     },
                 ],
@@ -212,6 +234,7 @@ class LogicRewarder:
             bt.logging.error(f"API request failed: {e}")
         
         try:
+            response = response.replace("--", "")
             response_str = openai_client.chat.completions.create(
                 model=model_name,
                 messages=[
