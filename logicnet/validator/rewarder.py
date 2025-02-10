@@ -68,36 +68,40 @@ class LogicRewarder:
                     + CORRECTNESS_WEIGHT * correctness[i]
                     + PROCESSING_TIME_WEIGHT * min(process_times[i] / timeout, 1)
                 )
-                reward_info = {
-                    "task_uid": task_uid,  # Include the task_uid in the reward log
-                    "similarity": similarities[i],
-                    "correctness": correctness[i],
-                    "process_time": process_times[i],
-                }
-                reward_logs.append(reward_info)
-
+        
                 # Scale up the reward
                 reward = reward / 2 + 0.5
                 valid_rewards.append(reward)
 
-                try:               
-                    ## show the reward, correctness, similarity for valid ids
-                    bt.logging.info(
-                        f"[REWARDER][{task_uid}] Valid_id: {valid_uids[i]} Reward: {reward}, Correctness: {correctness[i]}, Similarity: {similarities[i]}, process_time: {process_times[i]}, miner_response: {valid_responses[i].logic_answer.strip()} \n\n"
-                    )
+                try:
+                    reward_info = {
+                    "task_uid": task_uid,
+                    "miner_uid": valid_uids[i],
+                    "reward": reward,
+                    "similarity": similarities[i],
+                    "correctness": correctness[i],
+                    "process_time": process_times[i],
+                    "miner_response": valid_responses[i].logic_answer.strip(),
+                    }
+                    reward_logs.append(reward_info)               
+                    
                 except Exception as e:
-                    bt.logging.error(f"Error in logging reward for valid ids: {e}")
+                    bt.logging.error(f"Error in logging reward for valid miners: {e}")
 
 
         total_uids = valid_uids + invalid_uids
         rewards = valid_rewards + invalid_rewards
 
+        # Append reward logs for invalid UIDs
         for invalid_uid in invalid_uids:
             reward_logs.append({
                 "task_uid": task_uid,
+                "miner_uid": invalid_uid,
+                "reward": 0,
                 "similarity": 0,
                 "correctness": 0,
                 "process_time": 0,
+                "miner_response": "",
             })
         return total_uids, rewards, reward_logs
 
