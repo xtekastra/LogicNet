@@ -21,6 +21,8 @@ from logicnet.utils.wandb_manager import WandbManager
 from logicnet.utils.text_uts import modify_question
 from logicnet.protocol import LogicSynapse
 from neurons.validator.core.serving_queue import QueryQueue
+from collections import defaultdict
+import wandb
 
 
 def init_category(config=None, model_rotation_pool=None, dataset_weight=None):
@@ -197,6 +199,22 @@ class Validator(BaseValidatorNeuron):
 
         # Assign incentive rewards
         self.assign_incentive_rewards(self.miner_uids, self.miner_scores, self.miner_reward_logs)
+
+        # Assign incentive rewards
+        self.assign_incentive_rewards(
+            self.miner_uids,
+            self.miner_scores,
+            self.miner_reward_logs
+        )
+
+        # Flatten logs for passing to wandb
+        flat_reward_logs = []
+        for batch_logs in self.miner_reward_logs:
+            flat_reward_logs.extend(batch_logs)
+
+        # Log to wandb
+        if not self.config.wandb.off:
+            self._log_wandb(flat_reward_logs)
 
         # Update scores on chain
         self.update_scores_on_chain()
@@ -520,6 +538,130 @@ class Validator(BaseValidatorNeuron):
             args=(miner_informations,),
         )
         thread.start()
+
+    def _log_wandb(self, all_reward_logs: list):
+        """
+        Log reward logs to wandb as a table with the following columns:
+            [
+                "miner_uid",
+                "task_uid_list",
+                "miner_response_list",
+                "final_score_list",
+                "mean_final_score",
+                "correctness_list",
+                "mean_correctness",
+                "similarity_list",
+                "mean_similarity",
+                "processing_time_list",
+                "mean_processing_time",
+            ]
+        Each row in the table is for one UID, containing lists of their tasks, responses, scores, etc.
+        """
+        # 1) Guard clauses
+        if not self.wandb_manager or not self.wandb_manager.wandb:
+            bt.logging.warning("Wandb is not initialized. Skipping logging.")
+            return
+        if not all_reward_logs:
+            bt.logging.warning("No reward logs available. Skipping wandb logging.")
+            return
+
+        # 2) Group logs by miner_uid
+        logs_by_uid = defaultdict(list)
+        for log in all_reward_logs:
+            logs_by_uid[log["miner_uid"]].append(log)
+
+        # 3) Prepare a wandb.Table with the requested columns
+        table_columns = [
+            "miner_uid",
+            "task_uid_list",
+            "miner_response_list",
+            "final_score_list",
+            "mean_final_score",
+            "correctness_list",
+            "mean_correctness",
+            "similarity_list",
+            "mean_similarity",
+            "processing_time_list",
+            "mean_processing_time",
+        ]
+        miner_logs_table = wandb.Table(columns=table_columns)
+
+        # Variables to compute overall means across *all* logs
+        all_final_scores = []
+        all_correctnesses = []
+        all_similarities = []
+        all_process_times = []
+
+        # 4) Build each row for each UID
+        for uid, logs in logs_by_uid.items():
+            # Gather lists
+            task_ids = []
+            miner_responses = []
+            final_scores = []
+            correctness_list = []
+            similarity_list = []
+            process_times = []
+
+            for l in logs:
+                task_ids.append(l["task_uid"])
+                miner_responses.append(l["miner_response"])
+                final_scores.append(l["reward"])  # rename reward -> final_score
+                correctness_list.append(l["correctness"])
+                similarity_list.append(l["similarity"])
+                process_times.append(l["process_time"])
+
+            # Means for this UID
+            mean_final_score = sum(final_scores) / len(final_scores)
+            mean_correctness = sum(correctness_list) / len(correctness_list)
+            mean_similarity = sum(similarity_list) / len(similarity_list)
+            mean_process_time = sum(process_times) / len(process_times)
+
+            # Add to overall aggregator
+            all_final_scores.extend(final_scores)
+            all_correctnesses.extend(correctness_list)
+            all_similarities.extend(similarity_list)
+            all_process_times.extend(process_times)
+
+            # Add a single table row for this UID
+            miner_logs_table.add_data(
+                uid,
+                task_ids,
+                miner_responses,
+                final_scores,
+                round(mean_final_score, 4),
+                correctness_list,
+                round(mean_correctness, 4),
+                similarity_list,
+                round(mean_similarity, 4),
+                process_times,
+                round(mean_process_time, 4),
+            )
+
+        # 5) Compute overall means across all logs
+        overall_mean_score = sum(all_final_scores) / len(all_final_scores)
+        overall_mean_correctness = sum(all_correctnesses) / len(all_correctnesses)
+        overall_mean_similarity = sum(all_similarities) / len(all_similarities)
+        overall_mean_process_time = sum(all_process_times) / len(all_process_times)
+
+        # 6) Prepare the final data to log
+        wandb_data = {
+            "epoch_or_step": self.step,
+            "num_logs_total": len(all_reward_logs),
+            "overall_mean_score": round(overall_mean_score, 4),
+            "overall_mean_correctness": round(overall_mean_correctness, 4),
+            "overall_mean_similarity": round(overall_mean_similarity, 4),
+            "overall_mean_process_time": round(overall_mean_process_time, 4),
+            "miner_logs_table": miner_logs_table,  # The actual table
+        }
+
+        # 7) Log to wandb
+        self.wandb_manager.wandb.log(wandb_data, commit=True)
+
+        # 8) Debug
+        bt.logging.info(
+            f"Logged to wandb (epoch_or_step={self.step}):\n"
+            f"{json.dumps(wandb_data, indent=2, default=str)}"
+        )
 
 
 # The main function parses the configuration and runs the validator.
