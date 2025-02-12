@@ -3,6 +3,8 @@ from dotenv import load_dotenv
 load_dotenv()
 import pickle
 import time
+import json
+import re
 import threading
 import datetime
 import random
@@ -223,16 +225,12 @@ class Validator(BaseValidatorNeuron):
         
         for synapse, uids_should_rewards in zip(synapses, batched_uids_should_rewards):
             uids, should_rewards = zip(*uids_should_rewards)
-            bt.logging.info(
-                f"\033[1;34m🔍 Querying {uids}, Should reward: {should_rewards}\033[0m"
-            )
             if not synapse:
                 continue
             base_synapse = synapse.model_copy()
             synapse = synapse.miner_synapse()
             bt.logging.info(f"\033[1;34m🧠 Synapse to be sent to miners: {synapse}\033[0m")
             axons = [self.metagraph.axons[int(uid)] for uid in uids]
-            bt.logging.debug(f"\033[1;34m🧠 Axon: {axons}\033[0m")
 
             ## loop for each miner, add noise and send the synapse to the miner
             # responses = []
@@ -261,10 +259,6 @@ class Validator(BaseValidatorNeuron):
                 uid for uid, should_reward in zip(uids, should_rewards) if should_reward
             ]
 
-            bt.logging.info(
-                f"\033[1;34m🔍 Received {len(responses)} responses, {len(reward_responses)} to be rewarded\033[0m"
-            )
-
             if reward_uids:
                 uids, rewards, reward_logs = self.categories[category]["rewarder"](
                     reward_uids, reward_responses, base_synapse
@@ -277,7 +271,19 @@ class Validator(BaseValidatorNeuron):
                             + 0.1 * self.miner_manager.all_uids_info[uid].reward_scale
                         )
 
-                bt.logging.info(f"\033[1;32m🏆 Scored responses: {rewards}\033[0m")
+                unique_logs = {}
+                for log in reward_logs:
+                    miner_uid = log["miner_uid"]
+                    if miner_uid not in unique_logs:
+                        unique_logs[miner_uid] = log
+
+                logs_str = []
+                for log in unique_logs.values():
+                    logs_str.append(
+                        f"Task ID: [{log['task_uid']}], Miner UID: {log['miner_uid']}, Reward: {log['reward']}, Correctness: {log['correctness']}, Similarity: {log['similarity']}, Process Time: {log['process_time']}, Miner Response: {log['miner_response']};"
+                    )
+                formatted_logs_str = json.dumps(logs_str, indent = 5)
+                bt.logging.info(f"\033[1;32m🏆 Miner Scores: {formatted_logs_str}\033[0m")
 
                 if rewards and reward_logs and uids: 
                     self.miner_reward_logs.append(reward_logs)
@@ -376,7 +382,7 @@ class Validator(BaseValidatorNeuron):
             ]
         )
         # The batch size is 8 or the number of miners
-        batch_size = min(8, model_miner_count)
+        batch_size = min(4, model_miner_count)
         random.shuffle(uids_should_rewards)
         batched_uids_should_rewards = [
             uids_should_rewards[i * batch_size : (i + 1) * batch_size]
