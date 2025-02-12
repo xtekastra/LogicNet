@@ -8,7 +8,7 @@ from logicnet.protocol import LogicSynapse
 from sentence_transformers import SentenceTransformer
 from logicnet.utils.model_selector import model_selector
 from logicnet.utils.regex_helper import extract_numerical_part
-from logicnet.validator.prompt import DETECT_TRICK_TEMPLATE, CORRECTNESS_TEMPLATE
+from logicnet.validator.prompt import DETECT_TRICK_TEMPLATE, CORRECTNESS_TEMPLATE, DETECT_TRICK_TEMPLATE_2
 
 SIMILARITY_WEIGHT = 0.3
 CORRECTNESS_WEIGHT = 0.7
@@ -68,36 +68,40 @@ class LogicRewarder:
                     + CORRECTNESS_WEIGHT * correctness[i]
                     + PROCESSING_TIME_WEIGHT * min(process_times[i] / timeout, 1)
                 )
-                reward_info = {
-                    "task_uid": task_uid,  # Include the task_uid in the reward log
-                    "similarity": similarities[i],
-                    "correctness": correctness[i],
-                    "process_time": process_times[i],
-                }
-                reward_logs.append(reward_info)
-
+        
                 # Scale up the reward
                 reward = reward / 2 + 0.5
                 valid_rewards.append(reward)
 
-                try:               
-                    ## show the reward, correctness, similarity for valid ids
-                    bt.logging.info(
-                        f"[REWARDER][{task_uid}] Valid_id: {valid_uids[i]} Reward: {reward}, Correctness: {correctness[i]}, Similarity: {similarities[i]}, process_time: {process_times[i]}, miner_response: {valid_responses[i].logic_answer.strip()} \n\n"
-                    )
+                try:
+                    reward_info = {
+                    "task_uid": task_uid,
+                    "miner_uid": valid_uids[i],
+                    "reward": reward,
+                    "similarity": similarities[i],
+                    "correctness": correctness[i],
+                    "process_time": process_times[i],
+                    "miner_response": valid_responses[i].logic_answer.strip(),
+                    }
+                    reward_logs.append(reward_info)               
+                    
                 except Exception as e:
-                    bt.logging.error(f"Error in logging reward for valid ids: {e}")
+                    bt.logging.error(f"Error in logging reward for valid miners: {e}")
 
 
         total_uids = valid_uids + invalid_uids
         rewards = valid_rewards + invalid_rewards
 
+        # Append reward logs for invalid UIDs
         for invalid_uid in invalid_uids:
             reward_logs.append({
                 "task_uid": task_uid,
+                "miner_uid": invalid_uid,
+                "reward": 0,
                 "similarity": 0,
                 "correctness": 0,
                 "process_time": 0,
+                "miner_response": "",
             })
         return total_uids, rewards, reward_logs
 
@@ -174,6 +178,20 @@ class LogicRewarder:
                             correctness[idx] = 0.5
         return correctness
     
+    def clean_response(self, response: str):
+        """Clean the response by removing formatting characters.
+
+        Args:
+            response (str): Raw response.
+
+        Returns:
+            str: Cleaned response.
+        """
+        formatting_chars = ['$', '$$', '\\[', '\\]', '%', '-', "<", ">", "/", "*", "#", "!"]
+        for char in formatting_chars:
+            response = response.replace(char, ' ')
+        return response
+    
 
     def _get_correctness_by_llm(self, question: str, ground_truth: str, response: str, model_name: str, openai_client: openai.OpenAI):
         """Calculate the correctness score for a single response using LLM.
@@ -191,18 +209,47 @@ class LogicRewarder:
 
         ## check trick case
         try:
+            ## check with hard rule
             strings = ['a', 'b', 'c', 'd', 'e'] ## add to response to avoid gpt cached the output
+            cheat_words = ["miner_answer", "<example>", "</", "preference>", "<preference"]
+            for cheat_word in cheat_words:
+                if cheat_word in response.lower():
+                    return -1
+                
+            ## check with LLM with prompt DETECT_TRICK_TEMPLATE_2
+            if "python" not in question.lower():
+                ## skip if the question is gencode task
+                response_str = openai_client.chat.completions.create(
+                    model="gpt-4o",
+                    messages=[
+                        {
+                            "role": "user",
+                            "content": DETECT_TRICK_TEMPLATE_2.format(
+                                question=question,
+                                response=response
+                            ),
+                        },
+                    ],
+                    max_tokens=15,
+                    temperature=0,
+                ).choices[0].message.content.strip().lower()
+                bt.logging.info(f"[CORRECTNESS] Trick detection DETECT_TRICK_TEMPLATE_2: {response_str}")
+                if "no" in response_str or "is a prompt" in response_str:
+                    return -1
+
+            clone_response = self.clean_response(response)
+            clone_response = str(random.choice(strings)) + clone_response + str(random.choice(strings))
             response_str = openai_client.chat.completions.create(
-                model=model_name,
+                model="gpt-4o",
                 messages=[
                     {
                         "role": "user",
                         "content": DETECT_TRICK_TEMPLATE.format(
-                            response=str(random.choice(strings)) + response + str(random.choice(strings))
+                            response=clone_response
                         ),
                     },
                 ],
-                max_tokens=5,
+                max_tokens=15,
                 temperature=0,
             ).choices[0].message.content.strip().lower()
             bt.logging.info(f"[CORRECTNESS] Trick detection: {response_str}")
@@ -212,6 +259,7 @@ class LogicRewarder:
             bt.logging.error(f"API request failed: {e}")
         
         try:
+            response = response.replace("--", "")
             response_str = openai_client.chat.completions.create(
                 model=model_name,
                 messages=[
