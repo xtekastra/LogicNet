@@ -8,7 +8,7 @@ from logicnet.protocol import LogicSynapse
 from sentence_transformers import SentenceTransformer
 from logicnet.utils.model_selector import model_selector
 from logicnet.utils.regex_helper import extract_numerical_part
-from logicnet.validator.prompt import DETECT_TRICK_TEMPLATE, CORRECTNESS_TEMPLATE
+from logicnet.validator.prompt import DETECT_TRICK_TEMPLATE, CORRECTNESS_TEMPLATE, DETECT_TRICK_TEMPLATE_2
 
 SIMILARITY_WEIGHT = 0.3
 CORRECTNESS_WEIGHT = 0.7
@@ -215,6 +215,27 @@ class LogicRewarder:
             for cheat_word in cheat_words:
                 if cheat_word in response.lower():
                     return -1
+                
+            ## check with LLM with prompt DETECT_TRICK_TEMPLATE_2
+            if "python" not in question.lower():
+                ## skip if the question is gencode task
+                response_str = openai_client.chat.completions.create(
+                    model="gpt-4o",
+                    messages=[
+                        {
+                            "role": "user",
+                            "content": DETECT_TRICK_TEMPLATE_2.format(
+                                question=question,
+                                response=response
+                            ),
+                        },
+                    ],
+                    max_tokens=15,
+                    temperature=0,
+                ).choices[0].message.content.strip().lower()
+                bt.logging.info(f"[CORRECTNESS] Trick detection DETECT_TRICK_TEMPLATE_2: {response_str}")
+                if "no" in response_str or "is a prompt" in response_str:
+                    return -1
 
             clone_response = self.clean_response(response)
             clone_response = str(random.choice(strings)) + clone_response + str(random.choice(strings))
@@ -228,7 +249,7 @@ class LogicRewarder:
                         ),
                     },
                 ],
-                max_tokens=5,
+                max_tokens=15,
                 temperature=0,
             ).choices[0].message.content.strip().lower()
             bt.logging.info(f"[CORRECTNESS] Trick detection: {response_str}")
