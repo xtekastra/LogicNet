@@ -225,15 +225,14 @@ class LogicRewarder:
                         {
                             "role": "user",
                             "content": DETECT_TRICK_TEMPLATE_2.format(
-                                question=question,
                                 response=response
                             ),
                         },
                     ],
-                    max_tokens=15,
+                    max_tokens=25,
                     temperature=0,
                 ).choices[0].message.content.strip().lower()
-                bt.logging.info(f"[CORRECTNESS] Trick detection DETECT_TRICK_TEMPLATE_2: {response_str}")
+                bt.logging.info(f"[CORRECTNESS] Trick detection DETECT_TRICK_TEMPLATE_2: {response_str} ====> {response[:100]}")
                 if "no" in response_str or "is a prompt" in response_str:
                     return -1
 
@@ -249,10 +248,10 @@ class LogicRewarder:
                         ),
                     },
                 ],
-                max_tokens=15,
+                max_tokens=25,
                 temperature=0,
             ).choices[0].message.content.strip().lower()
-            bt.logging.info(f"[CORRECTNESS] Trick detection: {response_str}")
+            bt.logging.info(f"[CORRECTNESS] Trick detection: {response_str} ====> {response[:100]}")
             if "yes" in response_str:
                 return -1
         except Exception as e:
