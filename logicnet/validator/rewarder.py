@@ -234,7 +234,7 @@ class LogicRewarder:
                 ).choices[0].message.content.strip().lower()
                 bt.logging.info(f"[CORRECTNESS] Trick detection DETECT_TRICK_TEMPLATE_2: {response_str} ====> {response[:100]}")
                 if "no" in response_str or "is a prompt" in response_str:
-                    return -1
+                    return 0
 
             clone_response = self.clean_response(response)
             clone_response = str(random.choice(strings)) + clone_response + str(random.choice(strings))
