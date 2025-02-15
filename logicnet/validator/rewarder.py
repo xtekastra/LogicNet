@@ -82,6 +82,7 @@ class LogicRewarder:
                     "correctness": correctness[i],
                     "process_time": process_times[i],
                     "miner_response": valid_responses[i].logic_answer.strip(),
+                    "ground_truth": base_synapse.ground_truth_answer
                     }
                     reward_logs.append(reward_info)               
                     
@@ -102,6 +103,7 @@ class LogicRewarder:
                 "correctness": 0,
                 "process_time": 0,
                 "miner_response": "",
+                "ground_truth": base_synapse.ground_truth_answer
             })
         return total_uids, rewards, reward_logs
 
@@ -420,7 +422,7 @@ class LogicRewarder:
                     temperature=0.7,
                 )
                 response = response.choices[0].message.content
-                bt.logging.info(f"[SIMILARITY] Self-generated ground truth: {response}")
+                # bt.logging.info(f"[SIMILARITY] Self-generated ground truth: {response}")
                 return response  # Return response if successful
             
             except openai.OpenAIError as e:
@@ -442,7 +444,7 @@ class LogicRewarder:
                                 temperature=0.7,
                             )
                             response = response.choices[0].message.content
-                            bt.logging.info(f"[SIMILARITY] Self-generated ground truth: {response}")
+                            # bt.logging.info(f"[SIMILARITY] Self-generated ground truth: {response}")
                             return response
                         except openai.OpenAIError as e:
                             bt.logging.error(f"API request failed after switching: {e}")
