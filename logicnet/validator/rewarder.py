@@ -206,7 +206,9 @@ class LogicRewarder:
         Returns:
             float: Correctness score for the response (float between 0 and 1).
         """
-
+        response = response.replace("\n---", "").replace("---\n", "")
+        if response.strip() == ";":
+            return 0.0
         ## check trick case
         try:
             ## check with hard rule
