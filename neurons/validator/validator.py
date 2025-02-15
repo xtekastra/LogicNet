@@ -280,7 +280,7 @@ class Validator(BaseValidatorNeuron):
                 logs_str = []
                 for log in unique_logs.values():
                     logs_str.append(
-                        f"Task ID: [{log['task_uid']}], Miner UID: {log['miner_uid']}, Reward: {log['reward']}, Correctness: {log['correctness']}, Similarity: {log['similarity']}, Process Time: {log['process_time']}, Miner Response: {log['miner_response']};"
+                        f"Task ID: [{log['task_uid']}], Miner UID: {log['miner_uid']}, Reward: {log['reward']}, Correctness: {log['correctness']}, Similarity: {log['similarity']}, Process Time: {log['process_time']}, Miner Response: {log['miner_response']}, Ground Truth: {log['ground_truth']}"
                     )
                 formatted_logs_str = json.dumps(logs_str, indent = 5)
                 bt.logging.info(f"\033[1;32m🏆 Miner Scores: {formatted_logs_str}\033[0m")
