@@ -228,7 +228,7 @@ class LogicChallenger:
                 response = openai_client.chat.completions.create(
                     model=model,
                     messages=messages,
-                    max_tokens=256,
+                    max_tokens=1024,
                     temperature=0.7,
                 )
                 revised_question = response.choices[0].message.content.strip()
