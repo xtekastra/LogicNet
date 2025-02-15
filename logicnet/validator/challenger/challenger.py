@@ -13,7 +13,7 @@ import mathgenerator
 from datasets import load_dataset
 from typing import Tuple
 
-DATASET_WEIGHT = [40,10,10,10,10,10,10]
+DATASET_WEIGHT = [50,0,0,10,10,20,10]
 
 class LogicChallenger:
     def __init__(self, model_rotation_pool: dict, dataset_weight: str):
