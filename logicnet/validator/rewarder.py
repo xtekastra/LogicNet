@@ -136,7 +136,7 @@ class LogicRewarder:
 
         for idx, response in enumerate(responses):
             miner_answer = response.logic_answer.strip()
-            bt.logging.info(f"[CORRECTNESS] Miner response: {miner_answer}")
+            # bt.logging.info(f"[CORRECTNESS] Miner response: {miner_answer}")
             # Try programmatic comparison
             # score = self._compare_numerical_answers(ground_truth_answer, miner_answer)
             # if score is not None:
@@ -206,7 +206,7 @@ class LogicRewarder:
         Returns:
             float: Correctness score for the response (float between 0 and 1).
         """
-        response = response.replace("\n---", "").replace("---\n", "")
+        # response = response.replace("\n---", "").replace("---\n", "")
         if response.strip() == ";":
             return 0.0
         ## check trick case
