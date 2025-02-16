@@ -13,7 +13,7 @@ import mathgenerator
 from datasets import load_dataset
 from typing import Tuple
 
-DATASET_WEIGHT = [40,10,10,10,10,10,10]
+DATASET_WEIGHT = [50,0,0,10,10,20,10]
 
 class LogicChallenger:
     def __init__(self, model_rotation_pool: dict, dataset_weight: str):
@@ -228,7 +228,7 @@ class LogicChallenger:
                 response = openai_client.chat.completions.create(
                     model=model,
                     messages=messages,
-                    max_tokens=256,
+                    max_tokens=1024,
                     temperature=0.7,
                 )
                 revised_question = response.choices[0].message.content.strip()
