@@ -82,6 +82,7 @@ class LogicRewarder:
                     "correctness": correctness[i],
                     "process_time": process_times[i],
                     "miner_response": valid_responses[i].logic_answer.strip(),
+                    "ground_truth": base_synapse.ground_truth_answer
                     }
                     reward_logs.append(reward_info)               
                     
@@ -102,6 +103,7 @@ class LogicRewarder:
                 "correctness": 0,
                 "process_time": 0,
                 "miner_response": "",
+                "ground_truth": base_synapse.ground_truth_answer
             })
         return total_uids, rewards, reward_logs
 
@@ -136,7 +138,7 @@ class LogicRewarder:
 
         for idx, response in enumerate(responses):
             miner_answer = response.logic_answer.strip()
-            bt.logging.info(f"[CORRECTNESS] Miner response: {miner_answer}")
+            # bt.logging.info(f"[CORRECTNESS] Miner response: {miner_answer}")
             # Try programmatic comparison
             # score = self._compare_numerical_answers(ground_truth_answer, miner_answer)
             # if score is not None:
@@ -206,7 +208,9 @@ class LogicRewarder:
         Returns:
             float: Correctness score for the response (float between 0 and 1).
         """
-
+        # response = response.replace("\n---", "").replace("---\n", "")
+        if response.strip() == ";":
+            return 0.0
         ## check trick case
         try:
             ## check with hard rule
@@ -234,7 +238,7 @@ class LogicRewarder:
                 ).choices[0].message.content.strip().lower()
                 bt.logging.info(f"[CORRECTNESS] Trick detection DETECT_TRICK_TEMPLATE_2: {response_str} ====> {response[:100]}")
                 if "no" in response_str or "is a prompt" in response_str:
-                    return -1
+                    return 0
 
             clone_response = self.clean_response(response)
             clone_response = str(random.choice(strings)) + clone_response + str(random.choice(strings))
@@ -418,7 +422,7 @@ class LogicRewarder:
                     temperature=0.7,
                 )
                 response = response.choices[0].message.content
-                bt.logging.info(f"[SIMILARITY] Self-generated ground truth: {response}")
+                # bt.logging.info(f"[SIMILARITY] Self-generated ground truth: {response}")
                 return response  # Return response if successful
             
             except openai.OpenAIError as e:
@@ -440,7 +444,7 @@ class LogicRewarder:
                                 temperature=0.7,
                             )
                             response = response.choices[0].message.content
-                            bt.logging.info(f"[SIMILARITY] Self-generated ground truth: {response}")
+                            # bt.logging.info(f"[SIMILARITY] Self-generated ground truth: {response}")
                             return response
                         except openai.OpenAIError as e:
                             bt.logging.error(f"API request failed after switching: {e}")
