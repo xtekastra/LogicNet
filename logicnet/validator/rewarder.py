@@ -75,15 +75,20 @@ class LogicRewarder:
 
                 try:
                     reward_info = {
-                    "task_uid": task_uid,
-                    "miner_uid": valid_uids[i],
-                    "reward": reward,
-                    "similarity": similarities[i],
-                    "correctness": correctness[i],
-                    "process_time": process_times[i],
-                    "miner_response": valid_responses[i].logic_answer.strip(),
-                    "ground_truth": base_synapse.ground_truth_answer
+                        "task_uid": task_uid,
+                        "miner_uid": valid_uids[i],
+                        "reward": reward,
+                        "similarity": similarities[i],
+                        "correctness": correctness[i],
+                        "process_time": process_times[i],
+                        "miner_response": valid_responses[i].logic_answer.strip(),
+                        "miner_reasoning": response_texts[i],
+                        "question": base_synapse.raw_logic_question,
+                        "logic_question": base_synapse.logic_question,
+                        "ground_truth": base_synapse.ground_truth_answer,
+                        "ref_ground_truth": ref_ground_truth,
                     }
+
                     reward_logs.append(reward_info)               
                     
                 except Exception as e:
@@ -103,8 +108,13 @@ class LogicRewarder:
                 "correctness": 0,
                 "process_time": 0,
                 "miner_response": "",
-                "ground_truth": base_synapse.ground_truth_answer
+                "miner_reasoning": "",
+                "question": base_synapse.raw_logic_question,
+                "logic_question": base_synapse.logic_question,
+                "ground_truth": base_synapse.ground_truth_answer,
+                "ref_ground_truth": "",
             })
+
         return total_uids, rewards, reward_logs
 
     def _get_correctness(
