@@ -75,19 +75,20 @@ class LogicRewarder:
 
                 try:
                     reward_info = {
-                    "task_uid": task_uid,
-                    "miner_uid": valid_uids[i],
-                    "reward": reward,
-                    "similarity": similarities[i],
-                    "correctness": correctness[i],
-                    "process_time": process_times[i],
-                    "miner_response": valid_responses[i].logic_answer.strip(),
-                    "miner_reasoning":response_texts[i],
-                    "question": base_synapse.raw_logic_question,
-                    "logic_question": base_synapse.logic_question, 
-                    "ground_truth":base_synapse.ground_truth_answer,
-                    "ref_ground_truth": ref_ground_truth,
+                        "task_uid": task_uid,
+                        "miner_uid": valid_uids[i],
+                        "reward": reward,
+                        "similarity": similarities[i],
+                        "correctness": correctness[i],
+                        "process_time": process_times[i],
+                        "miner_response": valid_responses[i].logic_answer.strip(),
+                        "miner_reasoning": response_texts[i],
+                        "question": base_synapse.raw_logic_question,
+                        "logic_question": base_synapse.logic_question,
+                        "ground_truth": base_synapse.ground_truth_answer,
+                        "ref_ground_truth": ref_ground_truth,
                     }
+
                     reward_logs.append(reward_info)               
                     
                 except Exception as e:
@@ -107,13 +108,13 @@ class LogicRewarder:
                 "correctness": 0,
                 "process_time": 0,
                 "miner_response": "",
-                "miner_reasoning":"",
+                "miner_reasoning": "",
                 "question": base_synapse.raw_logic_question,
                 "logic_question": base_synapse.logic_question,
-                "ground_truth":base_synapse.ground_truth_answer,
+                "ground_truth": base_synapse.ground_truth_answer,
                 "ref_ground_truth": "",
-            
             })
+
         return total_uids, rewards, reward_logs
 
     def _get_correctness(
@@ -147,7 +148,7 @@ class LogicRewarder:
 
         for idx, response in enumerate(responses):
             miner_answer = response.logic_answer.strip()
-            bt.logging.info(f"[CORRECTNESS] Miner response: {miner_answer}")
+            # bt.logging.info(f"[CORRECTNESS] Miner response: {miner_answer}")
             # Try programmatic comparison
             # score = self._compare_numerical_answers(ground_truth_answer, miner_answer)
             # if score is not None:
@@ -217,7 +218,9 @@ class LogicRewarder:
         Returns:
             float: Correctness score for the response (float between 0 and 1).
         """
-
+        # response = response.replace("\n---", "").replace("---\n", "")
+        if response.strip() == ";":
+            return 0.0
         ## check trick case
         try:
             ## check with hard rule
@@ -236,17 +239,16 @@ class LogicRewarder:
                         {
                             "role": "user",
                             "content": DETECT_TRICK_TEMPLATE_2.format(
-                                question=question,
                                 response=response
                             ),
                         },
                     ],
-                    max_tokens=15,
+                    max_tokens=25,
                     temperature=0,
                 ).choices[0].message.content.strip().lower()
-                bt.logging.info(f"[CORRECTNESS] Trick detection DETECT_TRICK_TEMPLATE_2: {response_str}")
+                bt.logging.info(f"[CORRECTNESS] Trick detection DETECT_TRICK_TEMPLATE_2: {response_str} ====> {response[:100]}")
                 if "no" in response_str or "is a prompt" in response_str:
-                    return -1
+                    return 0
 
             clone_response = self.clean_response(response)
             clone_response = str(random.choice(strings)) + clone_response + str(random.choice(strings))
@@ -260,10 +262,10 @@ class LogicRewarder:
                         ),
                     },
                 ],
-                max_tokens=15,
+                max_tokens=25,
                 temperature=0,
             ).choices[0].message.content.strip().lower()
-            bt.logging.info(f"[CORRECTNESS] Trick detection: {response_str}")
+            bt.logging.info(f"[CORRECTNESS] Trick detection: {response_str} ====> {response[:100]}")
             if "yes" in response_str:
                 return -1
         except Exception as e:
@@ -430,7 +432,7 @@ class LogicRewarder:
                     temperature=0.7,
                 )
                 response = response.choices[0].message.content
-                bt.logging.info(f"[SIMILARITY] Self-generated ground truth: {response}")
+                # bt.logging.info(f"[SIMILARITY] Self-generated ground truth: {response}")
                 return response  # Return response if successful
             
             except openai.OpenAIError as e:
@@ -452,7 +454,7 @@ class LogicRewarder:
                                 temperature=0.7,
                             )
                             response = response.choices[0].message.content
-                            bt.logging.info(f"[SIMILARITY] Self-generated ground truth: {response}")
+                            # bt.logging.info(f"[SIMILARITY] Self-generated ground truth: {response}")
                             return response
                         except openai.OpenAIError as e:
                             bt.logging.error(f"API request failed after switching: {e}")
