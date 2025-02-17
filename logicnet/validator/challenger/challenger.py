@@ -13,7 +13,7 @@ import mathgenerator
 from datasets import load_dataset
 from typing import Tuple
 
-DATASET_WEIGHT = [40,30,20,10]
+DATASET_WEIGHT = [60,20,20]
 
 class LogicChallenger:
     def __init__(self, model_rotation_pool: dict, dataset_weight: str):
@@ -55,9 +55,9 @@ class LogicChallenger:
         Returns:
             (atom_logic_question, atom_logic_answer) as a tuple of strings.
         """
-        resources = ['mathgenerator', 'gsm8k', 'mmlustem', 'satmath']
+        resources = ['mathgenerator', 'gsm8k', 'mmlustem']
 
-        if len(self.dataset_weight) == 4:
+        if len(self.dataset_weight) == 3:
             selected_resource = random.choices(resources, weights=self.dataset_weight, k=1)[0]
         else:
             bt.logging.warning("Invalid dataset weight configuration provided. Using default weights.")
@@ -91,11 +91,13 @@ class LogicChallenger:
                 random_index = random.randint(0, len(data_set['question']) - 1)
                 question = data_set['question'][random_index]
                 answer = data_set['answer'][random_index]
+                if "####" in answer:
+                    answer = answer.split("####")[1]
                 atom_question = f"Find the solution of this question:\n---\n{question}\n---\n"
                 atom_answer = answer
 
             # Select an atom question and answer from the MMLU-STEM
-            elif selected_resource == 'mmlustem':
+            else:
                 ds = load_dataset("TIGER-Lab/MMLU-STEM")
                 bt.logging.debug("Generating problem using MMLU-STEM dataset.")
                 data_set = ds['test']
@@ -107,19 +109,6 @@ class LogicChallenger:
                 answer_choice = data_set['choices'][random_index]
                 atom_question = f"Find the solution of this question:\n---\n{question}\n---\n"
                 atom_answer = answer_choice[answer_id]
-
-            # Select an atom question and answer from the SAT Math
-            else:
-                ds = load_dataset("mcaleste/sat_multiple_choice_math_may_23")
-                bt.logging.debug("Generating problem using SAT Math dataset.")
-                data_set = ds['train']
-                bt.logging.info(f"Loaded SAT Math dataset with {len(data_set['Question'])} entries")
-                random_index = random.randint(0, len(data_set['Question']) - 1)
-                question = data_set['Question'][random_index]
-                possible_answers = data_set['Possible Answers'][random_index]
-                answer_id = data_set['Answer'][random_index]
-                atom_question = f"Find the solution of this question:\n---\n{question}\n---\n"
-                atom_answer = self.get_answer_value(possible_answers, answer_id)
 
         except Exception as e:
             bt.logging.error(f"Error accessing dataset {selected_resource}: {e}. Attempting to load an alternative dataset.")
