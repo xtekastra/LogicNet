@@ -195,7 +195,7 @@ def add_args(cls, parser):
             "--dataset_weight",
             type=str,
             help="The weight of the dataset",
-            default="50,0,0,10,10,20,10",
+            default="60,20,20",
         )
 
     else:
