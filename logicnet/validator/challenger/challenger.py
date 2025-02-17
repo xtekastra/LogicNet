@@ -13,7 +13,7 @@ import mathgenerator
 from datasets import load_dataset
 from typing import Tuple
 
-DATASET_WEIGHT = [50,0,0,10,10,20,10]
+DATASET_WEIGHT = [40,30,20,10]
 
 class LogicChallenger:
     def __init__(self, model_rotation_pool: dict, dataset_weight: str):
@@ -55,10 +55,9 @@ class LogicChallenger:
         Returns:
             (atom_logic_question, atom_logic_answer) as a tuple of strings.
         """
-        resources = ['mathgenerator', 'zebralogicbench-grid', 'zebralogicbench-mc', 
-                     'ultrainteract', 'gsm8k', 'mmlustem', 'satmath']
+        resources = ['mathgenerator', 'gsm8k', 'mmlustem', 'satmath']
 
-        if len(self.dataset_weight) == 7:
+        if len(self.dataset_weight) == 4:
             selected_resource = random.choices(resources, weights=self.dataset_weight, k=1)[0]
         else:
             bt.logging.warning("Invalid dataset weight configuration provided. Using default weights.")
@@ -83,52 +82,6 @@ class LogicChallenger:
                     f"Topic: {topic}, Subtopic: {subtopic}.\n{atom_question}\n---\n"
                 )
 
-            elif selected_resource == 'zebralogicbench-grid':
-                ds_grid = load_dataset("allenai/ZebraLogicBench-private", "grid_mode", token=os.environ.get('HF_TOKEN'))
-                bt.logging.debug("Generating problem using ZebraLogicBench (grid mode).")
-                data_set_grid = ds_grid['test']
-                bt.logging.info(f"Loaded ZebraLogicBench (grid_mode) dataset with {len(data_set_grid['puzzle'])} entries")
-                random_index = random.randint(0, len(data_set_grid['puzzle']) - 1)
-                puzzle = data_set_grid['puzzle'][random_index]
-                answer = data_set_grid['solution'][random_index]
-                atom_question = f"Find the solution of this problem:\n---\n{puzzle}\n---\n"
-                atom_answer = answer
-            
-            # Select an atom question and answer from the ZebraLogicBench mc_mode
-            elif selected_resource == 'zebralogicbench-mc':
-                ds_mc = load_dataset("allenai/ZebraLogicBench-private", "mc_mode", token=os.environ.get('HF_TOKEN'))
-                bt.logging.debug("Generating problem using ZebraLogicBench (multiple choice mode).")
-                data_set_mc = ds_mc['test']
-                bt.logging.info(f"Loaded ZebraLogicBench (mc_mode) dataset with {len(data_set_mc['puzzle'])} entries")
-                random_index = random.randint(0, len(data_set_mc['puzzle']) - 1)
-                puzzle = data_set_mc['puzzle'][random_index]
-                question = data_set_mc['question'][random_index]
-                answer = data_set_mc['answer'][random_index]
-                atom_question = f"Find the solution of this puzzle problem:\n---\npuzzle: {puzzle}\n---\nquestion: {question}\n---\n"
-                atom_answer = answer
-
-            # Select an atom question and answer from the UltraInteract
-            elif selected_resource == 'ultrainteract':
-                ds = load_dataset("openbmb/UltraInteract_sft")
-                bt.logging.debug(
-                    "Generating problem using UltraInteract dataset."
-                )
-                data_set = ds["train"]
-                data_set = data_set.filter(
-                    lambda x: "python" in x["instruction"].lower()
-                )
-                bt.logging.info(
-                    f"Loaded UltraInteract dataset with {len(data_set['instruction'])} entries"
-                )
-                random_index = random.randint(
-                    0, len(data_set["instruction"]) - 1
-                )
-                instruction = data_set["instruction"][random_index]
-                response = data_set["response"][random_index]
-                # atom_question = f"Find the solution of this instruction:\n---\n{instruction}\n---\n"
-                atom_question = f"This is an gen-code task in Python, Your have to find out solution and code python to solve the task. Please give step by step solution and python code for the following instruction:\n---\n{instruction}\n---\n. Give solution in a step by step and the python code."
-                atom_answer = response
-            
             # Select an atom question and answer from the GSM8K
             elif selected_resource == 'gsm8k':
                 ds = load_dataset("openai/gsm8k", "main")
@@ -156,7 +109,7 @@ class LogicChallenger:
                 atom_answer = answer_choice[answer_id]
 
             # Select an atom question and answer from the SAT Math
-            elif selected_resource == 'satmath':
+            else:
                 ds = load_dataset("mcaleste/sat_multiple_choice_math_may_23")
                 bt.logging.debug("Generating problem using SAT Math dataset.")
                 data_set = ds['train']

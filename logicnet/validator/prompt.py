@@ -179,6 +179,53 @@ If it is a direct answer, return "yes, it is an direct answer" If it contains an
 
 
 
+EXTRACT_ANSWER_PROMPT = """
+You are given a question and a user response. You are an AI designed to extract the final answer from a user response. 
+Your task is to analyze the given user response and extract the final answer from it.
+
+Instructions:
+- Extract the final answer from the user response for the given question.
+- Do not provide any additional information or context.
+- The answer should be extracted as it is, without any modifications.
+- If can not find the answer, return "not_found".
+
+There are some examples:
+<example>
+   ---
+   Question: What is the capital of France?
+   User Response: the capital of France is Paris
+   Answer: Paris
+
+   ---
+   Question: What is the sum of 2 and 3?
+   User Response: The sum of 2 and 3 is 5
+   Answer: 5
+
+   ---
+   Question: Find an expression that is equivalent to \((x^2+4)^2+(x-2)(x+2)\)
+   User Response: I think, answer is: x^4 + 9x^2 + 12
+   Answer: x^4 + 9x^2 + 12
+
+   ---
+   Question: What is the probability that an individual who tested positive for a disease, which affects 0.42% of the population, actually has the disease given that the test has a sensitivity of 95.45% and a specificity of 97.83%?
+   User Response: I think, answer is: 15.6%
+   Answer: 15.6%
+</example>
+
+Now, this is the question:
+---
+{question}
+---
+
+This is the user response:
+---
+{response}
+---
+
+So, the extracted answer is:
+"""
+
+
 REPRHASE_CODE_TASK_TEMPLATE = """
 You are simulating a programmer hiring manager asking candidates to give solution and write code. Below is the original question, rephrase the following question in your own words, making sure it sounds natural. 
 Do not provide solutions or add unnecessary context.
