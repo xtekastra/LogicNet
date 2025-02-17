@@ -258,6 +258,8 @@ class LogicRewarder:
             if "not_found" in extraced_miner_answer or "not found" in extraced_miner_answer:
                 bt.logging.info(f"[CORRECTNESS] Extracted answer not found: {response}")
                 return 0.0
+            else:
+                bt.logging.info(f"[CORRECTNESS] Extracted answer: {extraced_miner_answer}")
 
             response_str = openai_client.chat.completions.create(
                 model=model_name,
