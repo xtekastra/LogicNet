@@ -8,7 +8,7 @@ from logicnet.protocol import LogicSynapse
 from sentence_transformers import SentenceTransformer
 from logicnet.utils.model_selector import model_selector
 from logicnet.utils.regex_helper import extract_numbers
-from logicnet.validator.prompt import DETECT_TRICK_TEMPLATE, CORRECTNESS_TEMPLATE, DETECT_TRICK_TEMPLATE_2, EXTRACT_ANSWER_PROMPT
+from logicnet.validator.prompt import DETECT_TRICK_TEMPLATE, CORRECTNESS_TEMPLATE, EXTRACT_ANSWER_PROMPT
 
 SIMILARITY_WEIGHT = 0.3
 CORRECTNESS_WEIGHT = 0.7
@@ -242,14 +242,12 @@ class LogicRewarder:
             bt.logging.error(f"API request failed: {e}")
         
         try:
-            response = response.replace("--", "")
             extraced_miner_answer = openai_client.chat.completions.create(
                 model="gpt-4o",
                 messages=[
                     {
                         "role": "user",
                         "content": EXTRACT_ANSWER_PROMPT.format(
-                            question=question,
                             response=response,
                         ),
                     },
@@ -257,6 +255,9 @@ class LogicRewarder:
                 max_tokens=25,
                 temperature=0,
             ).choices[0].message.content.strip().lower()
+            if "not_found" in extraced_miner_answer or "not found" in extraced_miner_answer:
+                bt.logging.info(f"[CORRECTNESS] Extracted answer not found: {response}")
+                return 0.0
 
             response_str = openai_client.chat.completions.create(
                 model=model_name,
@@ -300,6 +301,12 @@ class LogicRewarder:
             # Extract numerical values
             gt_values = extract_numbers(ground_truth)
             miner_values = extract_numbers(miner_answer)
+
+            if len(gt_values) == 0:
+                return None
+
+            if len(gt_values) > 0 and len(miner_values) == 0:
+                return 0.0
 
             if len(gt_values) == 1 or len(miner_values) == 1:
                 # Single numerical value found in both answers
