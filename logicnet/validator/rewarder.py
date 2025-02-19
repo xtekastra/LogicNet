@@ -321,7 +321,7 @@ class LogicRewarder:
             if len(gt_values) > 0 and len(miner_values) == 0:
                 return 0.0
 
-            if len(gt_values) == 1 or len(miner_values) == 1:
+            if len(gt_values) == 1 and len(miner_values) == 1:
                 # Single numerical value found in both answers
                 gt_value = gt_values[0]
                 miner_value = miner_values[0]
