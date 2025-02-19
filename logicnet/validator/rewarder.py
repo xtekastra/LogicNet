@@ -259,6 +259,7 @@ class LogicRewarder:
                         "role": "user",
                         "content": EXTRACT_ANSWER_PROMPT.format(
                             response=response,
+                            question=question
                         ),
                     },
                 ],
