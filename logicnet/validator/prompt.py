@@ -125,6 +125,7 @@ You are given an question and user response. You are an AI designed to extract t
 Instructions:
 - You have to try to extract the final answer from the user response.
 - Do not provide any additional information or context.
+- If the miner response is short and contains less than 10 words, just repeat it.
 - The answer should be extracted as it is, without any modifications.
 - If the miner response contains multiple answers, extract them all.
 - If can not find any potential value from user response, return "not_found".
