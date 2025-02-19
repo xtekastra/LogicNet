@@ -261,7 +261,7 @@ class Validator(BaseValidatorNeuron):
                     reward_uids, reward_responses, base_synapse
                 )
 
-                for i, uid in enumerate(reward_uids):
+                for i, uid in enumerate(uids):
                     if rewards[i] > 0:
                         rewards[i] = rewards[i] * (
                             0.9 + 0.1 * self.miner_manager.all_uids_info[uid].reward_scale
