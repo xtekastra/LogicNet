@@ -197,11 +197,6 @@ class Validator(BaseValidatorNeuron):
                 f"\033[1;34m😴 Sleeping for {sleep_per_batch} seconds between batches\033[0m"
             )
             time.sleep(sleep_per_batch)
-
-            bt.logging.info(
-                f"\033[1;34m😴 Sleeping for {sleep_per_batch} seconds between batches\033[0m"
-            )
-            time.sleep(sleep_per_batch)
         
         # Wait for all submitted tasks to complete
         for future, category, uids, should_rewards in as_completed(futures_with_metadata):
