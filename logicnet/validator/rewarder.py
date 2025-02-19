@@ -252,24 +252,28 @@ class LogicRewarder:
             bt.logging.error(f"API request failed: {e}")
         
         try:
-            extraced_miner_answer = openai_client.chat.completions.create(
-                model="gpt-4o",
-                messages=[
-                    {
-                        "role": "user",
-                        "content": EXTRACT_ANSWER_PROMPT.format(
-                            response=response,
-                        ),
-                    },
-                ],
-                max_tokens=25,
-                temperature=0,
-            ).choices[0].message.content.strip().lower()
-            if "not_found" in extraced_miner_answer or "not found" in extraced_miner_answer:
-                bt.logging.info(f"[CORRECTNESS] Extracted answer not found: {response}")
-                return 0.0
+            if len(response.split()) < 20:
+                extraced_miner_answer = response
             else:
-                bt.logging.info(f"[CORRECTNESS] Extracted answer: {extraced_miner_answer}")
+                extraced_miner_answer = openai_client.chat.completions.create(
+                    model="gpt-4o",
+                    messages=[
+                        {
+                            "role": "user",
+                            "content": EXTRACT_ANSWER_PROMPT.format(
+                                response=response,
+                                question=question
+                            ),
+                        },
+                    ],
+                    max_tokens=25,
+                    temperature=0,
+                ).choices[0].message.content.strip().lower()
+                if "not_found" in extraced_miner_answer or "not found" in extraced_miner_answer:
+                    bt.logging.info(f"[CORRECTNESS] Extracted answer not found: {response}")
+                    return 0.0
+                else:
+                    bt.logging.info(f"[CORRECTNESS] Extracted answer: {extraced_miner_answer}")
 
             response_str = openai_client.chat.completions.create(
                 model=model_name,
@@ -320,7 +324,7 @@ class LogicRewarder:
             if len(gt_values) > 0 and len(miner_values) == 0:
                 return 0.0
 
-            if len(gt_values) == 1 or len(miner_values) == 1:
+            if len(gt_values) == 1 and len(miner_values) == 1:
                 # Single numerical value found in both answers
                 gt_value = gt_values[0]
                 miner_value = miner_values[0]
