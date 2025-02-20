@@ -46,6 +46,8 @@ class LogicRewarder:
         invalid_uids = [
             uid for uid, response in zip(uids, responses) if not response.is_success
         ]
+        bt.logging.info(f"Valid UIDs: {valid_uids}")
+        bt.logging.info(f"Invalid UIDs: {invalid_uids}")
         invalid_rewards = [0 for _ in invalid_uids]
         reward_logs = []
         valid_rewards = []
