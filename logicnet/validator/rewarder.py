@@ -89,7 +89,7 @@ class LogicRewarder:
                         "logic_question": base_synapse.logic_question,
                         "ground_truth": base_synapse.ground_truth_answer,
                         "ref_ground_truth": ref_ground_truth,
-                        "selected_resource": 
+                        "selected_resource": selected_resource
                     }
 
                     reward_logs.append(reward_info)               
