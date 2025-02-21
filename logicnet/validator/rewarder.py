@@ -38,7 +38,7 @@ class LogicRewarder:
         """
         # Get the unique task UID from the base_synapse
         task_uid = base_synapse.task_uid
-
+        selected_resource=base_synapse.selected_resource
         valid_uids = [
             uid for uid, response in zip(uids, responses) if response.is_success
         ]
@@ -89,6 +89,7 @@ class LogicRewarder:
                         "logic_question": base_synapse.logic_question,
                         "ground_truth": base_synapse.ground_truth_answer,
                         "ref_ground_truth": ref_ground_truth,
+                        "selected_resource": 
                     }
 
                     reward_logs.append(reward_info)               
