@@ -15,6 +15,7 @@ import requests
 from copy import deepcopy
 import bittensor as bt
 import logicnet as ln
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from neurons.validator.validator_proxy import ValidatorProxy
 from logicnet.base.validator import BaseValidatorNeuron
 from logicnet.validator import MinerManager, LogicChallenger, LogicRewarder, MinerInfo
@@ -144,6 +145,8 @@ class Validator(BaseValidatorNeuron):
                     + traceback.format_exc()
                     + "\033[0m"
                 )
+        # Initialize ThreadPoolExecutor
+        self.worker_thread_pool = ThreadPoolExecutor(max_workers=self.config.max_workers)
 
     def forward(self):
         """
@@ -172,6 +175,7 @@ class Validator(BaseValidatorNeuron):
                 self.wandb_manager.init_wandb()
 
         # Query and reward
+        futures_with_metadata = []
         for (
             category,
             uids,
@@ -181,22 +185,26 @@ class Validator(BaseValidatorNeuron):
             bt.logging.info(
                 f"\033[1;34m🔍 Querying {len(uids)} uids for model {category}, sleep_per_batch: {sleep_per_batch}\033[0m"
             )
-
-            thread = threading.Thread(
-                target=self.async_query_and_reward,
-                args=(category, uids, should_rewards),
-            )
-            threads.append(thread)
-            thread.start()
+            future = self.worker_thread_pool.submit(
+                self.async_query_and_reward, 
+                category, 
+                uids, 
+                should_rewards
+            ) 
+            futures_with_metadata.append((future, category, uids, should_rewards))
 
             bt.logging.info(
                 f"\033[1;34m😴 Sleeping for {sleep_per_batch} seconds between batches\033[0m"
             )
             time.sleep(sleep_per_batch)
         
-        # Wait for all threads to complete
-        for thread in threads:
-            thread.join()
+        # Wait for all submitted tasks to complete
+        for future, category, uids, should_rewards in as_completed(futures_with_metadata):
+            try:
+                future.result()
+            except Exception as exc:
+                # Get the args that were passed to the failed task
+                bt.logging.warning(f"\033[1;33m⚠️ Task failed with error: {exc}\nFuture: {future}\nCategory: {category}\nUids: {uids}\nShould rewards: {should_rewards}\033[0m")
 
         # Assign incentive rewards
         self.assign_incentive_rewards(self.miner_uids, self.miner_scores, self.miner_reward_logs)
@@ -261,7 +269,7 @@ class Validator(BaseValidatorNeuron):
                     reward_uids, reward_responses, base_synapse
                 )
 
-                for i, uid in enumerate(reward_uids):
+                for i, uid in enumerate(uids):
                     if rewards[i] > 0:
                         rewards[i] = rewards[i] * (
                             0.9 + 0.1 * self.miner_manager.all_uids_info[uid].reward_scale
