@@ -53,7 +53,7 @@ def add_args(cls, parser):
         "--neuron.epoch_length",
         type=int,
         help="The default epoch length (how often we set weights, measured in 12 second blocks).",
-        default=100,
+        default=50,
     )
 
     parser.add_argument(
@@ -124,6 +124,13 @@ def add_args(cls, parser):
             type=int,
             help="The base time for the loop to run in seconds.",
             default=600,
+        )
+
+        parser.add_argument(
+            "--max_workers",
+            type=int,
+            help="The maximum number of workers to run in a single loop.",
+            default=32,
         )
 
         parser.add_argument(
