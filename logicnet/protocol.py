@@ -40,6 +40,10 @@ class LogicSynapse(bt.Synapse):
     )
 
     # SYNAPSE INFORMATION
+    selected_resource: str = pydantic.Field(
+        "",
+        description="Selected resource of this synapse"
+    )
     category: str = pydantic.Field(
         "",
         description="One of the categories in the Validator main."
