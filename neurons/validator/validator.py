@@ -543,9 +543,7 @@ class Validator(BaseValidatorNeuron):
                 "question",
                 "logic_question",
                 "ref_ground_truth",
-                "ground_truth_answer",
-                "selected_resource"
-                
+                "ground_truth_answer"                
             ]
         Each row in the table is for one UID, containing lists of their tasks, responses, scores, etc.
         """
@@ -572,7 +570,6 @@ class Validator(BaseValidatorNeuron):
                 "logic_question": log["logic_question"],
                 "ref_ground_truth": log["ref_ground_truth"],
                 "ground_truth": log["ground_truth"],
-                "selected_resource": log["selected_resource"]
             }
 
             # 3) Log to wandb
