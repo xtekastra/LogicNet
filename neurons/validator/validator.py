@@ -569,7 +569,7 @@ class Validator(BaseValidatorNeuron):
                 "question": log["question"],
                 "logic_question": log["logic_question"],
                 "ref_ground_truth": log["ref_ground_truth"],
-                "ground_truth": log["ground_truth"],
+                "ground_truth": log["ground_truth"]
             }
 
             # 3) Log to wandb
