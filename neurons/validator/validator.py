@@ -96,7 +96,7 @@ class Validator(BaseValidatorNeuron):
                 f"Model must be gpt-4o. Found {self.model_rotation_pool['openai'][2]} instead."
             )
             bt.logging.info("Setting OpenAI model to gpt-4o.")
-            self.model_rotation_pool["openai"][2] = "gpt-4o"
+            self.model_rotation_pool["openai"][2] = "gpt-4o-mini"
         
         # Check if 'null' is at the same index in both cli lsts
         for i in range(3):
