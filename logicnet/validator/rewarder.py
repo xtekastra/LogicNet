@@ -234,7 +234,7 @@ class LogicRewarder:
             clone_response = self.clean_response(response)
             clone_response = str(random.choice(strings)) + clone_response + str(random.choice(strings))
             response_str = openai_client.chat.completions.create(
-                model="gpt-4o",
+                model="gpt-4o-mini",
                 messages=[
                     {
                         "role": "user",
@@ -257,7 +257,7 @@ class LogicRewarder:
                 extraced_miner_answer = response
             else:
                 extraced_miner_answer = openai_client.chat.completions.create(
-                    model="gpt-4o",
+                    model="gpt-4o-mini",
                     messages=[
                         {
                             "role": "user",
@@ -308,6 +308,8 @@ class LogicRewarder:
             return 0.5
 
     def _compare_numerical_answers(self, ground_truth: str, miner_answer: str):
+        if ground_truth.strip().lower() == miner_answer.strip().lower():
+            return 1.0
         try:
             # Remove formatting characters from the answers
             formatting_chars = ['$', '$$', '\\[', '\\]', '%', 'm^2', 'm^3']
