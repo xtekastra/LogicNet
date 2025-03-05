@@ -188,7 +188,7 @@ def add_args(cls, parser):
             type=str,
             help="The model for the LLM client",
             # default="Qwen/Qwen2.5-7B-Instruct,gpt-4o-mini,meta-llama/Llama-3.3-70B-Instruct-Turbo",
-            default="null,gpt-4o,null",
+            default="null,gpt-4o-mini,null",
         )
 
         parser.add_argument(
