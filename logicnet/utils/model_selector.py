@@ -14,7 +14,7 @@ def model_selector(model_pool, task_type="create_task"):
         api_key = model_pool["vllm"][1]
         model = model_pool["vllm"][2]
     else:
-        model = model_pool["openai"]["0"]
-        base_url = model_pool["openai"]["1"]
-        api_key = model_pool["openai"]["2"]
+        base_url = model_pool["openai"][0]
+        api_key = model_pool["openai"][1]
+        model = model_pool["openai"][2]
     return model, base_url, api_key
