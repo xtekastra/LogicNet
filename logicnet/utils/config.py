@@ -197,7 +197,7 @@ def add_args(cls, parser):
             "--llm_client.vllm_model",
             type=str,
             help="The model for the VLLM client",
-            default="Qwen/Qwen2-7B-Instruct",
+            default="Qwen/Qwen2.5-7B-Instruct",
         )
         parser.add_argument(
             "--llm_client.vllm_key",

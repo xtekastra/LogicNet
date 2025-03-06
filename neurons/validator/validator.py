@@ -63,13 +63,13 @@ class Validator(BaseValidatorNeuron):
             bt.logging.warning("OPENAI_API_KEY is not set. Please set it to use OpenAI")
             raise ValueError("OPENAI_API_KEY is not set. Please set it to use OpenAI or restart the validator.")
         
-        if self.config.llm_client.gpt_url:
+        if self.config.llm_client.gpt_url and self.config.llm_client.gpt_model:
             self.model_pool["openai"] = [
                 self.config.llm_client.gpt_url,
                 openai_key,
                 self.config.llm_client.gpt_model
             ]
-        if self.config.llm_client.vllm_url:
+        if self.config.llm_client.vllm_url and self.config.llm_client.vllm_model:
             self.model_pool["vllm"] = [
                 self.config.llm_client.vllm_url, 
                 self.config.llm_client.vllm_key, 
