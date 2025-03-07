@@ -413,7 +413,7 @@ class LogicRewarder:
                 response = openai_client.chat.completions.create(
                     model=model,
                     messages=messages,
-                    max_tokens=1024,
+                    max_tokens=300,
                     temperature=0.7,
                 )
                 response = response.choices[0].message.content
