@@ -114,7 +114,7 @@ class BaseNeuron(ABC):
             bt.logging.info("Should not resyncing metagraph.")
 
         if self.should_set_weights():
-            # bt.logging.info("Setting weights.")
+            bt.logging.info("Setting weights.")
             self.set_weights()
         else:
             bt.logging.info("Should not setting weights.")
