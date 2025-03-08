@@ -138,12 +138,17 @@ Using Together AI and Open AI simplifies setup and reduces local resource requir
 | You must run at least 2 models in any combination of 3
    ```bash
    pm2 start python --name "sn35-validator" -- neurons/validator/validator.py \
-     --netuid 35 \
-     --wallet.name "your-wallet-name" \
-     --wallet.hotkey "your-hotkey-name" \
-     --subtensor.network finney \
-     --neuron_type validator \
-     --logging.debug
+      --netuid 35 \
+      --wallet.name "your-wallet-name" \
+      --wallet.hotkey "your-hotkey-name" \
+      --subtensor.network finney \
+      --neuron_type validator \
+      --llm_client.gpt_url https://api.openai.com/v1 \
+      --llm_client.vllm_url 0.0.0.0:8000/v1 \
+      --llm_client.gpt_model gpt-4o-mini \
+      --llm_client.vllm_model Qwen/Qwen2.5-7B-Instruct \
+      --llm_client.vllm_key xyz \
+      --logging.debug
    ```
 
 4. **Enable Public Access (Optional)**
