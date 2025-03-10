@@ -234,7 +234,7 @@ class LogicRewarder:
             clone_response = self.clean_response(response)
             clone_response = str(random.choice(strings)) + clone_response + str(random.choice(strings))
             response_str = openai_client.chat.completions.create(
-                model="gpt-4o-mini",
+                model=model_name,
                 messages=[
                     {
                         "role": "user",
@@ -257,7 +257,7 @@ class LogicRewarder:
                 extraced_miner_answer = response
             else:
                 extraced_miner_answer = openai_client.chat.completions.create(
-                    model="gpt-4o-mini",
+                    model=model_name,
                     messages=[
                         {
                             "role": "user",

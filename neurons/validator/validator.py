@@ -27,12 +27,12 @@ from collections import defaultdict
 import wandb
 
 
-def init_category(config=None, model_pool=None, dataset_weight=None):
+def init_category(config=None, model_pool=None):
     category = {
         "Logic": {
             "synapse_type": ln.protocol.LogicSynapse,
             "incentive_weight": 1.0,
-            "challenger": LogicChallenger(model_pool, dataset_weight),
+            "challenger": LogicChallenger(model_pool),
             "rewarder": LogicRewarder(model_pool),
             "timeout": 64,
         }
@@ -86,7 +86,7 @@ class Validator(BaseValidatorNeuron):
             bt.logging.warning("All models are invalid. Validator cannot proceed.")
             raise ValueError("All models are invalid. Please configure at least one model and restart the validator.")
         
-        self.categories = init_category(self.config, self.model_pool, self.config.dataset_weight)
+        self.categories = init_category(self.config, self.model_pool)
         self.miner_manager = MinerManager(self)
         self.load_state()
         self.update_scores_on_chain()
