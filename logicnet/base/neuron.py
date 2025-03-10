@@ -108,7 +108,7 @@ class BaseNeuron(ABC):
         self.check_registered()
 
         if self.should_sync_metagraph():
-            bt.logging.info("Resyncing metagraph.")
+            # bt.logging.info("Resyncing metagraph.")
             self.resync_metagraph()
         else:
             bt.logging.info("Should not resyncing metagraph.")

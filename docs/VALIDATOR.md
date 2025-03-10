@@ -36,7 +36,7 @@ This setup allows you to run the Validator locally by hosting a vLLM server. Whi
 #### Minimum Compute Requirements
 
 - **GPU**: 1x GPU with 24GB VRAM (e.g., RTX 4090, A100, A6000)
-- **Storage**: 100GB
+- **Storage**: 300GB (minimum)
 - **Python**: 3.10
 
 #### Steps
@@ -80,15 +80,13 @@ This setup allows you to run the Validator locally by hosting a vLLM server. Whi
 
 ---
 
-### Step 2: Configure for Together AI and Open AI
-
-Using Together AI and Open AI simplifies setup and reduces local resource requirements. At least one of these platforms must be configured.
+### Step 2: Configure Open AI for cheat detection system
 
 #### Prerequisites
 
-- **Account on Together.AI**: [Sign up here](https://together.ai/).
 - **Account on Hugging Face**: [Sign up here](https://huggingface.co/).
-- **API Key**: Obtain from the Together.AI dashboard.
+- **OpenAI API Key**: Obtain from the OpenAI platform dashboard.
+- **Wandb API Key**: Obtain from the Wandb platform dashboard.
 - **Python 3.10**
 - **PM2 Process Manager**: For running and managing the Validator process. *OPTIONAL*
 
@@ -135,19 +133,27 @@ Using Together AI and Open AI simplifies setup and reduces local resource requir
    ```
 
 3. **Start the Validator**
-| You must run at least 2 models in any combination of 3
    ```bash
    pm2 start python --name "sn35-validator" -- neurons/validator/validator.py \
-     --netuid 35 \
-     --wallet.name "your-wallet-name" \
-     --wallet.hotkey "your-hotkey-name" \
-     --subtensor.network finney \
-     --neuron_type validator \
-     --logging.debug
+      --netuid 35 \
+      --wallet.name "your-wallet-name" \
+      --wallet.hotkey "your-hotkey-name" \
+      --subtensor.network finney \
+      --neuron_type validator \
+      --logging.debug
    ```
 
-4. **Enable Public Access (Optional)**
-   Add this flag to enable proxy:
+   > ***Optional Flags*** (incase you want to run the validator with different configurations)
+   ```
+      --llm_client.gpt_url https://api.openai.com/v1 \
+      --llm_client.gpt_model gpt-4o-mini \
+
+      --llm_client.vllm_url 0.0.0.0:8000/v1 \
+      --llm_client.vllm_model Qwen/Qwen2.5-7B-Instruct \
+      --llm_client.vllm_key xyz \ 
+   ```
+
+4. **Enable Public Access (Optional)** *For recieving challenges from the frontend app*
    ```bash
    --axon.port "your-public-open-port"
    ```
