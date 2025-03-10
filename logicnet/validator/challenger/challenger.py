@@ -16,9 +16,8 @@ from typing import Tuple
 DATASET_WEIGHT = [60,20,20]
 
 class LogicChallenger:
-    def __init__(self, model_pool: dict, dataset_weight: str):
+    def __init__(self, model_pool: dict):
         self.model_pool = model_pool
-        self.dataset_weight = [float(weight) for weight in dataset_weight.split(',')]
         self.retry_count = 0 
 
     def __call__(self, synapse: LogicSynapse) -> LogicSynapse:

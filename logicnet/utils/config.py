@@ -205,14 +205,6 @@ def add_args(cls, parser):
             help="The key for the LLM client",
             default="xyz",
         )
-
-        parser.add_argument(
-            "--dataset_weight",
-            type=str,
-            help="The weight of the dataset",
-            default="60,20,20",
-        )
-
     else:
         parser.add_argument(
             "--miner.category",
