@@ -20,7 +20,6 @@ class LogicChallenger:
         self.retry_count = 0
         self.task_pool_url = os.getenv("TASK_POOL_URL", "http://localhost:8088/api/v1")
         self.access_token = None
-        self._login()
         self.validator_mode = validator_mode
 
     def _login(self):
@@ -97,6 +96,8 @@ class LogicChallenger:
             (atom_logic_question, atom_logic_answer) as a tuple of strings.
         """
         try:
+            if not self.access_token:
+                self._login()
             headers = {"Authorization": f"Bearer {self.access_token}"}
             response = requests.get(
                 f"{self.task_pool_url}/tasks/random",

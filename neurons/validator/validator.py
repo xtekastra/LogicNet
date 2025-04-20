@@ -135,7 +135,7 @@ class Validator(BaseValidatorNeuron):
         loop_start = time.time()
         while time.time() - loop_start < loop_base_time:
             threads = []
-            for (uids, should_rewards) in self.query_queue.get_batch_query(self.config.batch_size, N=self.config.batch_number):
+            for (uids, should_rewards) in self.query_queue.get_batch_query(batch_size=self.config.batch_size, batch_number=self.config.batch_number):
                 bt.logging.info(
                     f"\033[1;34m🔍 Querying {len(uids)} uids for model {self.config.llm_client.gpt_model}\033[0m"
                 )

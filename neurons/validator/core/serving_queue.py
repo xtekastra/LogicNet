@@ -55,7 +55,7 @@ class QueryQueue:
         new_synthetic_queue.extend(self.synthentic_queue)
         self.synthentic_queue = new_synthetic_queue
 
-    def get_batch_query(self, batch_size: int, N: int):
+    def get_batch_query(self, batch_size: int, batch_number: int):
         """
         Return N batch of query.
         
@@ -66,7 +66,7 @@ class QueryQueue:
         Returns:
             list: List of N batches of query
         """
-        for _ in range(N):
+        for _ in range(batch_number):
             ## random select batch_size from self.synthentic_queue
             batch_items = random.sample(self.synthentic_queue, batch_size)
             uids_to_query = [item.uid for item in batch_items]
@@ -78,7 +78,7 @@ class QueryQueue:
             yield uids_to_query, should_rewards
 
     def random_should_reward(self, uid):
-        return random.random() < 0.3  # 30% chance of rewarding
+        return random.random() < 0.3  # 30% chance of validating and re-computing the reward
 
     def get_query_for_proxy(self):
         # First yield all synthetic items
