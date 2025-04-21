@@ -325,8 +325,12 @@ class Validator(BaseValidatorNeuron):
                 if info.category == category
             ]
         )
+        # Return empty synapses if no miners are available
+        if model_miner_count == 0:
+            print("No miners available")
+            return [], []
         # The batch size is 8 or the number of miners
-        batch_size = min(4, model_miner_count)
+        batch_size = max(min(8, model_miner_count), 1)
         random.shuffle(uids_should_rewards)
         batched_uids_should_rewards = [
             uids_should_rewards[i * batch_size : (i + 1) * batch_size]
