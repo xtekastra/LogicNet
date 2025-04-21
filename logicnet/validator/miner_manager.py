@@ -80,6 +80,7 @@ class MinerManager:
             deserialize=False,
             timeout=60,
         )
+        bt.logging.info(f"Responses type: {type(responses)}. \nResponses: {responses}")
         responses = {
             uid: response.response_dict
             for uid, response in zip(self.all_uids, responses)

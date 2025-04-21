@@ -141,7 +141,7 @@ class Validator(BaseValidatorNeuron):
                 )
                 thread = threading.Thread(
                     target=self.async_query_and_reward,
-                    args=(uids, should_rewards),
+                    args=("Logic", uids, should_rewards),
                 )
                 threads.append(thread)
                 thread.start()
