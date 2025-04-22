@@ -69,7 +69,7 @@ class Miner(BaseMinerNeuron):
         try:
             if synapse.dendrite.hotkey not in self.metagraph.hotkeys:
                 # Ignore requests from unrecognized entities.
-                bt.logging.trace(
+                bt.logging.warning(
                     f"\033[1;35m🛑 Blacklisting unrecognized hotkey {synapse.dendrite.hotkey}\033[0m"
                 )
                 return True, "Unrecognized hotkey"
@@ -78,7 +78,7 @@ class Miner(BaseMinerNeuron):
             stake = self.metagraph.stake[validator_uid].item()
 
             if validator_uid not in self.volume_per_validator:
-                bt.logging.trace(
+                bt.logging.warning(
                     f"\033[1;35m🛑 Blacklisting {validator_uid}-validator has {stake} stake\033[0m"
                 )
                 return True, "Not enough stake"
@@ -89,7 +89,7 @@ class Miner(BaseMinerNeuron):
                 volume_per_validator=self.volume_per_validator,
                 interval=self.config.miner.limit_interval,
             ):
-                bt.logging.trace(
+                bt.logging.warning(
                     f"\033[1;35m🛑 Blacklisting {validator_uid}-validator for exceeding the limit\033[0m"
                 )
                 return True, "Limit exceeded"
@@ -107,7 +107,7 @@ class Miner(BaseMinerNeuron):
         priority = float(
             self.metagraph.S[caller_uid]
         )  # Return the stake as the priority.
-        bt.logging.trace(
+        bt.logging.warning(
             f"\033[1;36m🔝 Prioritizing {synapse.dendrite.hotkey} with value: {priority}\033[0m"
         )
         return priority

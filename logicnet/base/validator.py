@@ -115,6 +115,7 @@ class BaseValidatorNeuron(BaseNeuron):
                 # Run forward.
                 try:
                     self.forward()
+                    bt.logging.info(f"\033[1;32m🔄 step({self.step}) block({self.block}) forward() completed\033[0m")
                 except Exception as err:
                     print_exception(type(err), err, err.__traceback__)
 
@@ -202,8 +203,8 @@ class BaseValidatorNeuron(BaseNeuron):
         # Replace any NaN values with 0.
         raw_weights = torch.nn.functional.normalize(self.scores, p=1, dim=0)
         bt.logging.info(f"raw_weights {raw_weights}")
-        bt.logging.trace("top10 values", raw_weights.sort()[0])
-        bt.logging.trace("top10 uids", raw_weights.sort()[1])
+        bt.logging.info(f"top10 values {raw_weights.sort()[0]}")
+        bt.logging.info(f"top10 uids {raw_weights.sort()[1]}")
 
         # Convert uids to a PyTorch tensor before processing
         uids_tensor = self.metagraph.uids.clone().detach()
@@ -219,8 +220,8 @@ class BaseValidatorNeuron(BaseNeuron):
             subtensor=self.subtensor,
             metagraph=self.metagraph,
         )
-        bt.logging.trace("processed_weights", processed_weights)
-        bt.logging.trace("processed_weight_uids", processed_weight_uids)
+        bt.logging.info(f"processed_weights {processed_weights}")
+        bt.logging.info(f"processed_weight_uids {processed_weight_uids}")
 
         # Set the weights on chain via our subtensor connection.
         self.subtensor.set_weights(

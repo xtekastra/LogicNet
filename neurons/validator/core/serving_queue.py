@@ -35,7 +35,11 @@ class QueryQueue:
 
         min_rate_limit = min(all_uids_info.values(), key=lambda x: self.get_rate_limit_by_type(x.rate_limit)[0]).rate_limit
         min_rate_limit = max(min_rate_limit, MIN_RATE_LIMIT)
+        valid_uids = []
         for uid, info in all_uids_info.items():
+            if not info.category:
+                continue
+            valid_uids.append(uid)
             synthetic_rate_limit, proxy_rate_limit = self.get_rate_limit_by_type(info.rate_limit)
             all_uids.append(QueryItem(uid=uid))
             normalized_rate_limit = synthetic_rate_limit // min_rate_limit
@@ -44,7 +48,8 @@ class QueryQueue:
                 self.synthentic_queue.append(QueryItem(uid=uid))
             for _ in range(int(normalized_rate_limit)):
                 self.proxy_queue.append(QueryItem(uid=uid))
-        
+
+        bt.logging.info(f"Valid uids: {valid_uids}")
         # Shuffle the queue
         random.shuffle(self.synthentic_queue)
         random.shuffle(self.proxy_queue)
