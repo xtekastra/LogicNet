@@ -167,7 +167,6 @@ class Validator(BaseValidatorNeuron):
                     self.miner_scores.append(rewards)
 
             bt.logging.info(f"\033[1;32m🟢 Validator iteration completed in {time.time() - iter_start} seconds\033[0m")
-            time.sleep(5)
         
         # Assign incentive rewards
         self.assign_incentive_rewards(self.miner_uids, self.miner_scores, self.miner_reward_logs)
