@@ -18,7 +18,9 @@ class LogicChallenger:
     def __init__(self, model_pool: dict, validator_mode: bool = True):
         self.model_pool = model_pool
         self.retry_count = 0
-        self.task_pool_url = os.getenv("TASK_POOL_URL", "http://localhost:8088/api/v1")
+        self.task_pool_url = os.getenv("TASK_POOL_URL")
+        if not self.task_pool_url:
+            raise ValueError("TASK_POOL_URL is not set")
         self.access_token = None
         self.validator_mode = validator_mode
 
@@ -36,6 +38,7 @@ class LogicChallenger:
             self.access_token = response.json()["access_token"]
         except Exception as e:
             bt.logging.error(f"Failed to login to TaskPoolServer: {e}")
+            self.access_token = None
             raise
 
     def __call__(self, synapse: LogicSynapse) -> LogicSynapse:
@@ -127,6 +130,8 @@ class LogicChallenger:
             return atom_question, atom_answer
             
         except Exception as e:
+            bt.logging.error(f"Error fetching task from TaskPoolServer: {e}")
+            bt.logging.error(f"Current Access Token: {self.access_token}")
             self.retry_count += 1
             if self.retry_count > 3:
                 bt.logging.error("Max retries reached. Returning a default question and answer.")
