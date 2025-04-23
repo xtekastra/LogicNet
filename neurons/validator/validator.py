@@ -161,6 +161,7 @@ class Validator(BaseValidatorNeuron):
             # Process all queued results safely
             with self.reward_lock:
                 while not self.reward_queue.empty():
+                    bt.logging.info(f"\033[1;32m🟢 Update reward logs for miner {uids}")
                     reward_logs, uids, rewards = self.reward_queue.get()
                     self.miner_reward_logs.append(reward_logs)
                     self.miner_uids.append(uids)
@@ -169,6 +170,7 @@ class Validator(BaseValidatorNeuron):
             bt.logging.info(f"\033[1;32m🟢 Validator iteration completed in {time.time() - iter_start} seconds\033[0m")
         
         # Assign incentive rewards
+        bt.logging.info(f"\033[1;32m🟢 Assign incentive rewards for miner {self.miner_uids}")
         self.assign_incentive_rewards(self.miner_uids, self.miner_scores, self.miner_reward_logs)
 
         # Update scores on chain
