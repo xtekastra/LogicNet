@@ -84,7 +84,6 @@ This setup allows you to run the Validator locally by hosting a vLLM server. Whi
 
 #### Prerequisites
 
-- **Account on Hugging Face**: [Sign up here](https://huggingface.co/).
 - **OpenAI API Key**: Obtain from the OpenAI platform dashboard.
 - **Wandb API Key**: Obtain from the Wandb platform dashboard.
 - **Python 3.10**
@@ -114,11 +113,10 @@ This setup allows you to run the Validator locally by hosting a vLLM server. Whi
 3. **Set Up the `.env` File**
    ```bash
    echo "OPENAI_API_KEY=your_openai_api_key" >> .env
-   echo "HF_TOKEN=your_hugging_face_token" >> .env (needed for some some datasets)
    echo "WANDB_API_KEY=your_wandb_api_key" >> .env
    echo "TASK_POOL_URL=server_datapool_endpoint"
-   echo "VALIDATOR_USERNAME=your_validator_username" >> .env
-   echo "VALIDATOR_PASSWORD=your_validator_account" >> .env
+   echo "VALIDATOR_USERNAME=datapool_username" >> .env
+   echo "VALIDATOR_PASSWORD=datapool_account" >> .env
    echo "USE_TORCH=1" >> .env
    ```
 
