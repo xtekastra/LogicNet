@@ -34,7 +34,6 @@ class LogicChallenger:
                     "password": os.getenv("VALIDATOR_PASSWORD")
                 }
             )
-            response.raise_for_status()
             self.access_token = response.json()["access_token"]
         except Exception as e:
             bt.logging.error(f"Failed to login to TaskPoolServer: {e}")
@@ -101,6 +100,9 @@ class LogicChallenger:
         try:
             if not self.access_token:
                 self._login()
+            if not self.access_token:
+                raise ValueError("Failed to get access token")
+
             headers = {"Authorization": f"Bearer {self.access_token}"}
             response = requests.get(
                 f"{self.task_pool_url}/tasks/random",
@@ -133,6 +135,7 @@ class LogicChallenger:
             bt.logging.error(f"Error fetching task from TaskPoolServer: {e}")
             bt.logging.error(f"Current Access Token: {self.access_token}")
             self.retry_count += 1
+            self._login()
             if self.retry_count > 3:
                 bt.logging.error("Max retries reached. Returning a default question and answer.")
                 return (
