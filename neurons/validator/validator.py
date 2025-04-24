@@ -153,6 +153,7 @@ class Validator(BaseValidatorNeuron):
                 )
                 threads.append(thread)
                 thread.start()
+                time.sleep(4)
 
             # Wait for all threads to complete
             for thread in threads:
