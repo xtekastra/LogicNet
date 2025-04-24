@@ -70,7 +70,7 @@ class MinerManager:
         QUERY MINER's INFORMATION SYNAPSE
         """
         self.all_uids = [int(uid.item()) for uid in self.validator.metagraph.uids]
-        uid_to_axon = {uid: self.validator.metagraph.axons[int(uid)] for uid in self.all_uids}
+        uid_to_axon = dict(zip(self.all_uids, self.validator.metagraph.axons))
         query_axons = [uid_to_axon[int(uid)] for uid in self.all_uids]
         synapse = Information()
         bt.logging.info("Requesting miner info using synapse Information")
@@ -80,8 +80,6 @@ class MinerManager:
             deserialize=False,
             timeout=60,
         )
-        # for response in responses:
-        #     bt.logging.info(f"Response: {response.response_dict}")
         responses = {
             uid: response.response_dict
             for uid, response in zip(self.all_uids, responses)
