@@ -25,6 +25,8 @@ from logicnet.protocol import LogicSynapse
 from neurons.validator.core.serving_queue import QueryQueue
 from collections import defaultdict
 import wandb
+from threading import Lock
+import queue
 
 
 def init_category(config=None, model_pool=None):
@@ -93,10 +95,7 @@ class Validator(BaseValidatorNeuron):
         self.sync()
         self.miner_manager.update_miners_identity()
         self.wandb_manager = WandbManager(neuron = self)
-        self.query_queue = QueryQueue(
-            list(self.categories.keys()),
-            time_per_loop=self.config.loop_base_time,
-        )
+        self.query_queue = QueryQueue()
         if self.config.proxy.port:
             try:
                 self.validator_proxy = ValidatorProxy(self)
@@ -110,8 +109,8 @@ class Validator(BaseValidatorNeuron):
                     + traceback.format_exc()
                     + "\033[0m"
                 )
-        # Initialize ThreadPoolExecutor
-        # self.worker_thread_pool = ThreadPoolExecutor(max_workers=self.config.max_workers)
+        self.reward_lock = Lock()
+        self.reward_queue = queue.Queue()
 
     def forward(self):
         """
@@ -120,10 +119,7 @@ class Validator(BaseValidatorNeuron):
         """
         self.store_miner_infomation()
         bt.logging.info("\033[1;34m🔄 Updating available models & uids\033[0m")
-        async_batch_size = self.config.async_batch_size
-        loop_base_time = self.config.loop_base_time  # default is 600 seconds
-        threads = []
-        loop_start = time.time()
+        loop_base_time = self.config.loop_base_time  # default is 600s
         self.miner_manager.update_miners_identity()
         self.query_queue.update_queue(self.miner_manager.all_uids_info)
         self.miner_uids = []
@@ -139,129 +135,139 @@ class Validator(BaseValidatorNeuron):
                 self.wandb_manager.wandb.finish()
                 self.wandb_manager.init_wandb()
 
-        # Query and reward
-        futures_with_metadata = []
-        for (
-            category,
-            uids,
-            should_rewards,
-            sleep_per_batch,
-        ) in self.query_queue.get_batch_query(async_batch_size):
-            bt.logging.info(
-                f"\033[1;34m🔍 Querying {len(uids)} uids for model {category}, sleep_per_batch: {sleep_per_batch}\033[0m"
-            )
-            thread = threading.Thread(
-                target=self.async_query_and_reward,
-                args=(category, uids, should_rewards),
-            )
-            threads.append(thread)
-            thread.start()
-            bt.logging.info(
-                f"\033[1;34m😴 Sleeping for {sleep_per_batch} seconds between batches\033[0m"
-            )
-            time.sleep(sleep_per_batch)
+        # run in 600s
+        loop_start = time.time()
+        while time.time() - loop_start < loop_base_time:
+            iter_start = time.time()
+            threads = []
+            for (uids, should_rewards) in self.query_queue.get_batch_query(
+                batch_size=self.config.batch_size, 
+                batch_number=self.config.batch_number
+            ):
+                bt.logging.info(
+                    f"\033[1;34m🔍 Querying {len(uids)} uids for model {self.config.llm_client.gpt_model}\033[0m"
+                )
+                thread = threading.Thread(
+                    target=self.run_async_query,
+                    args=("Logic", uids, should_rewards),
+                )
+                threads.append(thread)
+                thread.start()
+                time.sleep(4)
 
-        # Wait for all threads to complete
-        for thread in threads:
-            thread.join()
+            # Wait for all threads to complete
+            for thread in threads:
+                thread.join()
+
+            # Process all queued results safely
+            with self.reward_lock:
+                while not self.reward_queue.empty():
+                    bt.logging.info(f"\033[1;32m🟢 Update reward logs for miner {uids}")
+                    reward_logs, uids, rewards = self.reward_queue.get()
+                    self.miner_reward_logs.append(reward_logs)
+                    self.miner_uids.append(uids)
+                    self.miner_scores.append(rewards)
+
+            bt.logging.info(f"\033[1;32m🟢 Validator iteration completed in {time.time() - iter_start} seconds\033[0m")
         
-        # # Wait for all submitted tasks to complete
-        # for future, category, uids, should_rewards in as_completed(futures_with_metadata):
-        #     try:
-        #         future.result()
-        #     except Exception as exc:
-        #         # Get the args that were passed to the failed task
-        #         bt.logging.warning(f"\033[1;33m⚠️ Task failed with error: {exc}\nFuture: {future}\nCategory: {category}\nUids: {uids}\nShould rewards: {should_rewards}\033[0m")
-
         # Assign incentive rewards
+        bt.logging.info(f"\033[1;32m🟢 Assign incentive rewards for miner {self.miner_uids}")
         self.assign_incentive_rewards(self.miner_uids, self.miner_scores, self.miner_reward_logs)
 
         # Update scores on chain
         self.update_scores_on_chain()
         self.save_state()
         self.store_miner_infomation()
+        bt.logging.info(f"\033[1;32m🟢 Validator loop completed in {time.time() - loop_start} seconds\033[0m")
 
-        actual_time_taken = time.time() - loop_start
-
-        if actual_time_taken < loop_base_time:
-            bt.logging.info(
-                f"\033[1;34m😴 Sleeping for {loop_base_time - actual_time_taken} seconds\033[0m"
+    def run_async_query(self, category: str, uids: list[int], should_rewards: list[int]):
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            loop.run_until_complete(
+                self.async_query_and_reward(category, uids, should_rewards)
             )
-            time.sleep(loop_base_time - actual_time_taken)
+        finally:
+            loop.close()
 
-
-    def async_query_and_reward(
+    async def async_query_and_reward(
         self,
         category: str,
         uids: list[int],
         should_rewards: list[int],
     ):
-        # Create new event loop
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-
-        dendrite = bt.dendrite(self.wallet)
-        uids_should_rewards = list(zip(uids, should_rewards))
-        synapses, batched_uids_should_rewards = self.prepare_challenge(
-            uids_should_rewards, category
-        )
-        
-        for synapse, uids_should_rewards in zip(synapses, batched_uids_should_rewards):
-            uids, should_rewards = zip(*uids_should_rewards)
-            if not synapse:
-                continue
-            base_synapse = synapse.model_copy()
-            synapse = synapse.miner_synapse()
-            bt.logging.info(f"\033[1;34m🧠 Synapse to be sent to miners: {synapse}\033[0m")
-            axons = [self.metagraph.axons[int(uid)] for uid in uids]
-
-            responses = dendrite.query(
-                axons=axons,
-                synapse=synapse,
-                deserialize=False,
-                timeout=self.categories[category]["timeout"],
-            )
-
-            reward_responses = [
-                response
-                for response, should_reward in zip(responses, should_rewards)
-                if should_reward
-            ]
-            reward_uids = [
-                uid for uid, should_reward in zip(uids, should_rewards) if should_reward
-            ]
-
-            if reward_uids:
-                uids, rewards, reward_logs = self.categories[category]["rewarder"](
-                    reward_uids, reward_responses, base_synapse
+        try:
+            dendrite = bt.dendrite(self.wallet)
+            try:
+                uids_should_rewards = list(zip(uids, should_rewards))
+                synapses, batched_uids_should_rewards = self.prepare_challenge(
+                    uids_should_rewards, category
                 )
+                
+                for synapse, uids_should_rewards in zip(synapses, batched_uids_should_rewards):
+                    uids, should_rewards = zip(*uids_should_rewards)
+                    if not synapse:
+                        continue
+                    base_synapse = synapse.model_copy()
+                    synapse = synapse.miner_synapse()
+                    bt.logging.info(f"\033[1;34m🧠 Synapse to be sent to miners: {synapse}\033[0m")
+                    axons = [self.metagraph.axons[int(uid)] for uid in uids]
+                    sent_time = time.time()
+                    # Use aquery instead of query
+                    responses = await dendrite.aquery(
+                        axons=axons,
+                        synapse=synapse,
+                        deserialize=False,
+                        timeout=self.categories[category]["timeout"],
+                    )
+                    for axon, response in zip(axons, responses):
+                        bt.logging.info(f"\033[1;34m🧠 {time.time() - sent_time}s Response from {axon}: {response}\033[0m ")
 
-                for i, uid in enumerate(uids):
-                    if rewards[i] > 0:
-                        rewards[i] = rewards[i] * (
-                            0.9 + 0.1 * self.miner_manager.all_uids_info[uid].reward_scale
+                    reward_responses = [
+                        response
+                        for response, should_reward in zip(responses, should_rewards)
+                        if should_reward
+                    ]
+                    reward_uids = [
+                        uid for uid, should_reward in zip(uids, should_rewards) if should_reward
+                    ]
+
+                    if reward_uids:
+                        uids, rewards, reward_logs = self.categories[category]["rewarder"](
+                            reward_uids, reward_responses, base_synapse
                         )
 
-                unique_logs = {}
-                for log in reward_logs:
-                    miner_uid = log["miner_uid"]
-                    if miner_uid not in unique_logs:
-                        unique_logs[miner_uid] = log
+                        for i, uid in enumerate(uids):
+                            if rewards[i] > 0:
+                                rewards[i] = rewards[i] * (
+                                    0.9 + 0.1 * self.miner_manager.all_uids_info[uid].reward_scale
+                                )
 
-                logs_str = []
-                for log in unique_logs.values():
-                    self._log_wandb(log)
-                    logs_str.append(
-                        f"Task ID: [{log['task_uid']}], Miner UID: {log['miner_uid']}, Reward: {log['reward']}, Correctness: {log['correctness']}, Similarity: {log['similarity']}, Process Time: {log['process_time']}, Miner Response: {log['miner_response']}, Ground Truth: {log['ground_truth']}"
-                    )
-                formatted_logs_str = json.dumps(logs_str, indent=5)
-                bt.logging.info(f"\033[1;32m🏆 Miner Scores: {formatted_logs_str}\033[0m")
-                if rewards and reward_logs and uids:
-                    self.miner_reward_logs.append(reward_logs)
-                    self.miner_uids.append(uids)
-                    self.miner_scores.append(rewards)
+                        unique_logs = {}
+                        for log in reward_logs:
+                            miner_uid = log["miner_uid"]
+                            if miner_uid not in unique_logs:
+                                unique_logs[miner_uid] = log
 
-        loop.close()
+                        logs_str = []
+                        for log in unique_logs.values():
+                            self._log_wandb(log)
+                            logs_str.append(
+                                f"Task ID: [{log['task_uid']}], Miner UID: {log['miner_uid']}, Reward: {log['reward']}, Correctness: {log['correctness']}, Similarity: {log['similarity']}, Process Time: {log['process_time']}, Miner Response: {log['miner_response']}, Ground Truth: {log['ground_truth']}"
+                            )
+                        formatted_logs_str = json.dumps(logs_str, indent=5)
+                        bt.logging.info(f"\033[1;32m🏆 Miner Scores: {formatted_logs_str}\033[0m")
+                        if rewards and reward_logs and uids:
+                            # Queue the results instead of directly appending
+                            self.reward_queue.put((reward_logs, uids, rewards))
+
+            finally:
+                # Ensure dendrite cleanup
+                await dendrite.aclose_session()
+
+        except Exception as e:
+            bt.logging.error(f"Error in async_query_and_reward: {str(e)}")
+            bt.logging.debug(traceback.format_exc())
 
     def add_noise_to_synapse_question(self, synapse: ln.protocol.LogicSynapse):
         """
@@ -354,8 +360,12 @@ class Validator(BaseValidatorNeuron):
                 if info.category == category
             ]
         )
+        # Return empty synapses if no miners are available
+        if model_miner_count == 0:
+            print("No miners available")
+            return [], []
         # The batch size is 8 or the number of miners
-        batch_size = min(4, model_miner_count)
+        batch_size = max(min(8, model_miner_count), 1)
         random.shuffle(uids_should_rewards)
         batched_uids_should_rewards = [
             uids_should_rewards[i * batch_size : (i + 1) * batch_size]
@@ -409,6 +419,7 @@ class Validator(BaseValidatorNeuron):
             bt.logging.info("State successfully saved to state.pkl")
         except Exception as e:
             bt.logging.error(f"Failed to save state: {e}")
+
     def load_state(self):
         """Loads state of  validator from a file, with fallback to .pt if .pkl is not found."""
         # TODO: After a transition period, remove support for the old .pt format.

@@ -7,7 +7,7 @@ The Validator is responsible for generating challenges for the Miner to solve. I
 **Protocol**: `LogicSynapse`
 
 - **Validator Prepares**:
-  - `raw_logic_question`: A math problem generated using MathGenerator.
+  - `raw_logic_question`: A math problem
   - `logic_question`: A personalized challenge created by refining `raw_logic_question` with an LLM.
 - **Miner Receives**:
   - `logic_question`: The challenge to solve.
@@ -84,7 +84,6 @@ This setup allows you to run the Validator locally by hosting a vLLM server. Whi
 
 #### Prerequisites
 
-- **Account on Hugging Face**: [Sign up here](https://huggingface.co/).
 - **OpenAI API Key**: Obtain from the OpenAI platform dashboard.
 - **Wandb API Key**: Obtain from the Wandb platform dashboard.
 - **Python 3.10**
@@ -109,14 +108,15 @@ This setup allows you to run the Validator locally by hosting a vLLM server. Whi
    ```bash
    pip install -e .
    pip uninstall uvloop -y
-   pip install git+https://github.com/lukew3/mathgenerator.git
    ```
 
 3. **Set Up the `.env` File**
    ```bash
    echo "OPENAI_API_KEY=your_openai_api_key" >> .env
-   echo "HF_TOKEN=your_hugging_face_token" >> .env (needed for some some datasets)
    echo "WANDB_API_KEY=your_wandb_api_key" >> .env
+   echo "TASK_POOL_URL=server_datapool_endpoint"
+   echo "VALIDATOR_USERNAME=datapool_username" >> .env
+   echo "VALIDATOR_PASSWORD=datapool_account" >> .env
    echo "USE_TORCH=1" >> .env
    ```
 

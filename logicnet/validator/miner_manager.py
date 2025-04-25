@@ -98,9 +98,9 @@ class MinerManager:
                 bt.logging.warning(
                     "No active miner available. Skipping setting weights."
                 )
+                return False
             miner_distribution = {}
             for uid, info in valid_miners_info.items():
-                # info = self.all_uids_info[int(uid)] if int(uid) in self.all_uids_info else MinerInfo(**info)
                 miner_state = self.all_uids_info.setdefault(
                     uid,
                     {"scores": [], "reward_logs": []},
