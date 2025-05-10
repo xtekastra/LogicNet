@@ -321,9 +321,10 @@ class Validator(BaseValidatorNeuron):
         previous_score = None
         rank = 0
         for i, (reward_id, score) in enumerate(sorted_rewards):
-            rank = i + 1 if score != previous_score else rank
+            # rank = i + 1 if score != previous_score else rank
+            rank = i + 1
             ranks.append((reward_id, rank, score))
-            previous_score = score
+            # previous_score = score
         
         # Restore the original order
         ranks.sort(key=lambda x: x[0])
@@ -335,9 +336,17 @@ class Validator(BaseValidatorNeuron):
             scaled_reward_value = reward_value + 1
             return scaled_reward_value
         
-        incentive_rewards = [
-            (incentive_formula(rank) if score > 0 else 0) for _, rank, score in ranks
-        ]
+        # incentive_rewards = [
+        #     (incentive_formula(rank) if score > 0.3 else 0) for _, rank, score in ranks
+        # ]
+
+        incentive_rewards = []
+        for _, rank, score in ranks:
+            ## only give reward top 160 miners, set 0 reward for 90 bad miners
+            if score > 0.3 and rank <= 160:
+                incentive_rewards.append(incentive_formula(rank))
+            else:
+                incentive_rewards.append(0)
         
         self.miner_manager.update_scores(final_uids, incentive_rewards, representative_logs)
         
