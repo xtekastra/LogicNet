@@ -33,7 +33,7 @@ class MinioManager:
             print(f"Error checking/creating bucket: {e}")
             raise
 
-    def upload_file(self, file_path, bucket_name):
+    def upload_file(self, file_path, bucket_name, minio_folder_path):
         """Upload a single file to MinIO."""
         self.ensure_bucket_exists(bucket_name)
         try:
@@ -41,7 +41,7 @@ class MinioManager:
             if not os.path.exists(file_path):
                 print(f"File '{file_path}' not found, skipping")
                 return False
-            self.minio_client.fput_object(bucket_name, object_name, file_path)
+            self.minio_client.fput_object(bucket_name, f"{minio_folder_path}/{object_name}", file_path)
             print(f"Uploaded '{file_path}' to bucket '{bucket_name}' as '{object_name}'")
             return True
         except S3Error as e:
