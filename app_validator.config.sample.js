@@ -9,7 +9,10 @@ module.exports = {
         USE_TORCH: 1,
         VALIDATOR_USERNAME: "datapool_username",
         VALIDATOR_PASSWORD: "datapool_password",
-        TASK_POOL_URL: "server_datapool_endpoint"
+        TASK_POOL_URL: "server_datapool_endpoint",
+        MINIO_ENDPOINT: "minio_endpoint",
+        MINIO_ACCESS_KEY: "minio_access_key",
+        MINIO_SECRET_KEY: "minio_secret_key"
     },
     args: [
         "--netuid", "35",
