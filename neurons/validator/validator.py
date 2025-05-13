@@ -28,6 +28,7 @@ from logicnet.utils.minio_manager import MinioManager
 import glob
 
 log_bucket_name = "logs"
+validator_name = os.getenv("VALIDATOR_NAME")
 validator_username = os.getenv("VALIDATOR_USERNAME")
 minio_endpoint = os.getenv("MINIO_ENDPOINT")
 access_key = os.getenv("MINIO_ACCESS_KEY")
@@ -588,8 +589,9 @@ if __name__ == "__main__":
 
             #########################################################
             # UPLOAD OUT LOG FILES
-            out_log_files = glob.glob(os.path.join(pm2_log_dir, "*out_*.log"))
+            out_log_files = glob.glob(os.path.join(pm2_log_dir, f"*{validator_name}-out*.log"))
             # bt.logging.info(out_log_files)
+
             current_file_count = len(out_log_files)
             # Detect rotation (new file added)
             if current_file_count >= 2:
@@ -607,7 +609,7 @@ if __name__ == "__main__":
 
             #########################################################
             # UPLOAD ERR LOG FILES
-            err_log_files = glob.glob(os.path.join(pm2_log_dir, "*error_*.log"))
+            err_log_files = glob.glob(os.path.join(pm2_log_dir, f"*{validator_name}-error*.log"))
             # bt.logging.info(err_log_files)
             current_file_count = len(err_log_files)
 
@@ -624,4 +626,4 @@ if __name__ == "__main__":
                             bt.logging.info(f"\033[1;32m✅ Uploaded {file_name} to MinIO\033[0m")
             #########################################################
 
-            time.sleep(300)
+            time.sleep(60)
