@@ -15,16 +15,13 @@ import requests
 from copy import deepcopy
 import bittensor as bt
 import logicnet as ln
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from neurons.validator.validator_proxy import ValidatorProxy
 from logicnet.base.validator import BaseValidatorNeuron
-from logicnet.validator import MinerManager, LogicChallenger, LogicRewarder, MinerInfo
+from logicnet.validator import MinerManager, LogicChallenger, LogicRewarder
 from logicnet.utils.wandb_manager import WandbManager
 from logicnet.utils.text_uts import modify_question
 from logicnet.protocol import LogicSynapse
 from neurons.validator.core.serving_queue import QueryQueue
-from collections import defaultdict
-import wandb
 from threading import Lock
 import queue
 from logicnet.utils.minio_manager import MinioManager
@@ -577,7 +574,8 @@ class Validator(BaseValidatorNeuron):
 
 # The main function parses the configuration and runs the validator.
 if __name__ == "__main__":
-    last_file_count = 0
+    last_err_file_name = ""
+    last_out_file_name = ""
     
     try:
         minio_manager = MinioManager(minio_endpoint, access_key, secret_key)
@@ -588,40 +586,42 @@ if __name__ == "__main__":
         while True:
             bt.logging.info("\033[1;32m🟢 Validator running...\033[0m", time.time())
 
-            # Get all file in the log directory which include -out in the name
+            #########################################################
+            # UPLOAD OUT LOG FILES
             out_log_files = glob.glob(os.path.join(pm2_log_dir, "*out_*.log"))
             # bt.logging.info(out_log_files)
             current_file_count = len(out_log_files)
-            
             # Detect rotation (new file added)
-            if current_file_count > last_file_count and current_file_count >= 2:
+            if current_file_count >= 2:
                 # A new file was created, so upload the latest previous file
                 previous_file = get_latest_previous_log_file(out_log_files)
-                if previous_file:
+                if previous_file != last_out_file_name and previous_file:
+                    last_out_file_name = previous_file
                     file_name = os.path.basename(previous_file)
                     if file_name not in minio_manager.get_uploaded_files(log_bucket_name):
                         bt.logging.info(f"Uploading {previous_file} to MinIO")
                         if minio_manager.upload_file(previous_file, log_bucket_name, validator_username):
                             bt.logging.info(f"\033[1;32m✅ Uploaded {file_name} to MinIO\033[0m")
+            #########################################################
 
-            # Get all *-err.log files in the log directory
+
+            #########################################################
+            # UPLOAD ERR LOG FILES
             err_log_files = glob.glob(os.path.join(pm2_log_dir, "*error_*.log"))
             # bt.logging.info(err_log_files)
             current_file_count = len(err_log_files)
 
             # Detect rotation (new file added)
-            if current_file_count > last_file_count and current_file_count >= 2:
+            if current_file_count >= 2:
                 # A new file was created, so upload the latest previous file
                 previous_file = get_latest_previous_log_file(err_log_files)
-                if previous_file:
+                if previous_file != last_err_file_name and previous_file:
+                    last_err_file_name = previous_file
                     file_name = os.path.basename(previous_file)
                     if file_name not in minio_manager.get_uploaded_files(log_bucket_name):
                         bt.logging.info(f"Uploading {previous_file} to MinIO")
                         if minio_manager.upload_file(previous_file, log_bucket_name, validator_username):
                             bt.logging.info(f"\033[1;32m✅ Uploaded {file_name} to MinIO\033[0m")
+            #########################################################
 
-            
-            # Update file count for next iteration
-            last_file_count = current_file_count
-
-            time.sleep(600)
+            time.sleep(300)
