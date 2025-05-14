@@ -73,7 +73,7 @@ class QueryQueue:
             yield uids_to_query, should_rewards
 
     def random_should_reward(self, uid):
-        return random.random() < 0.3  # 30% chance of validating and re-computing the reward
+        return random.random() < 0.5  # 50% chance of validating and re-computing the reward
 
     def get_query_for_proxy(self):
         # First yield all synthetic items
