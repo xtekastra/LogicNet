@@ -136,7 +136,7 @@ def add_args(cls, parser):
             "--batch_size",
             type=int,
             help="Batch size for query and reward.",
-            default=4,
+            default=8,
         )
         parser.add_argument(
             "--batch_number",
