@@ -6,6 +6,7 @@ pip install -e .
 # Uninstall uvloop if it's installed
 echo "Uninstalling uvloop..."
 pip uninstall uvloop -y
+bash pm2_setup.sh
 
 # Check if USE_TORCH=1 is already set in .env
 if grep -q '^USE_TORCH=1$' .env; then

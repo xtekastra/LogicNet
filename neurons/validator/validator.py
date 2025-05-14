@@ -15,19 +15,25 @@ import requests
 from copy import deepcopy
 import bittensor as bt
 import logicnet as ln
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from neurons.validator.validator_proxy import ValidatorProxy
 from logicnet.base.validator import BaseValidatorNeuron
-from logicnet.validator import MinerManager, LogicChallenger, LogicRewarder, MinerInfo
+from logicnet.validator import MinerManager, LogicChallenger, LogicRewarder
 from logicnet.utils.wandb_manager import WandbManager
 from logicnet.utils.text_uts import modify_question
 from logicnet.protocol import LogicSynapse
 from neurons.validator.core.serving_queue import QueryQueue
-from collections import defaultdict
-import wandb
 from threading import Lock
 import queue
+from logicnet.utils.minio_manager import MinioManager
+import glob
 
+log_bucket_name = "logs"
+app_name = os.getenv("APP_NAME", "validator")
+validator_username = os.getenv("VALIDATOR_USERNAME")
+minio_endpoint = os.getenv("MINIO_ENDPOINT")
+access_key = os.getenv("MINIO_ACCESS_KEY")
+secret_key = os.getenv("MINIO_SECRET_KEY")
+pm2_log_dir = os.getenv("PM2_LOG_DIR", "/root/.pm2/logs")
 
 def init_category(config=None, model_pool=None):
     category = {
@@ -49,6 +55,14 @@ model_blacklist = [
     "mistralai/Mistral-7B-Instruct-v0.2",
     "mistralai/Mistral-7B-Instruct"
 ]
+
+def get_latest_previous_log_file(log_files):
+    """Return the second-most-recent log file based on modification time."""
+    if len(log_files) < 2:
+        return None  # Not enough files to have a "previous" file
+    # Sort files by modification time (most recent first)
+    sorted_files = sorted(log_files, key=lambda x: os.path.getmtime(x), reverse=True)
+    return sorted_files[1]  # Second file is the latest previous
 
 class Validator(BaseValidatorNeuron):
     def __init__(self, config=None):
@@ -568,10 +582,57 @@ class Validator(BaseValidatorNeuron):
         except Exception as e:
             bt.logging.error(f"Error logging to wandb: {e}")
 
-
 # The main function parses the configuration and runs the validator.
 if __name__ == "__main__":
+    last_err_file_name = ""
+    last_out_file_name = ""
+    
+    try:
+        minio_manager = MinioManager(minio_endpoint, access_key, secret_key)
+    except Exception as e:
+        bt.logging.error(f"Error initializing MinioManager: {e}")
+    
     with Validator() as validator:
         while True:
             bt.logging.info("\033[1;32m🟢 Validator running...\033[0m", time.time())
-            time.sleep(360)
+
+            #########################################################
+            # UPLOAD OUT LOG FILES
+            out_log_files = glob.glob(os.path.join(pm2_log_dir, f"*{app_name}-out*.log"))
+            # bt.logging.info(out_log_files)
+
+            current_file_count = len(out_log_files)
+            # Detect rotation (new file added)
+            if current_file_count >= 2:
+                # A new file was created, so upload the latest previous file
+                previous_file = get_latest_previous_log_file(out_log_files)
+                if previous_file != last_out_file_name and previous_file:
+                    last_out_file_name = previous_file
+                    file_name = os.path.basename(previous_file)
+                    if file_name not in minio_manager.get_uploaded_files(log_bucket_name):
+                        bt.logging.info(f"Uploading {previous_file} to MinIO")
+                        if minio_manager.upload_file(previous_file, log_bucket_name, validator_username):
+                            bt.logging.info(f"\033[1;32m✅ Uploaded {file_name} to MinIO\033[0m")
+            #########################################################
+
+
+            #########################################################
+            # UPLOAD ERR LOG FILES
+            err_log_files = glob.glob(os.path.join(pm2_log_dir, f"*{app_name}-error*.log"))
+            # bt.logging.info(err_log_files)
+            current_file_count = len(err_log_files)
+
+            # Detect rotation (new file added)
+            if current_file_count >= 2:
+                # A new file was created, so upload the latest previous file
+                previous_file = get_latest_previous_log_file(err_log_files)
+                if previous_file != last_err_file_name and previous_file:
+                    last_err_file_name = previous_file
+                    file_name = os.path.basename(previous_file)
+                    if file_name not in minio_manager.get_uploaded_files(log_bucket_name):
+                        bt.logging.info(f"Uploading {previous_file} to MinIO")
+                        if minio_manager.upload_file(previous_file, log_bucket_name, validator_username):
+                            bt.logging.info(f"\033[1;32m✅ Uploaded {file_name} to MinIO\033[0m")
+            #########################################################
+
+            time.sleep(60)

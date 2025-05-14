@@ -1,15 +1,20 @@
 module.exports = {
   apps: [{
-    name: "your_validator_name", // update this name
+    name: "sn35-validator", // update this name
     script: "neurons/validator/validator.py",
     interpreter: "/root/miniconda3/envs/sn35-env/bin/python", // update this path
     env: {
+        APP_NAME: "sn35-validator",
         PYTHONPATH: './:${PYTHONPATH}',
         OPENAI_API_KEY: "your_openai_key",
         USE_TORCH: 1,
         VALIDATOR_USERNAME: "datapool_username",
         VALIDATOR_PASSWORD: "datapool_password",
-        TASK_POOL_URL: "server_datapool_endpoint"
+        TASK_POOL_URL: "server_datapool_endpoint",
+        MINIO_ENDPOINT: "minio_endpoint",
+        MINIO_ACCESS_KEY: "minio_access_key",
+        MINIO_SECRET_KEY: "minio_secret_key",
+        PM2_LOG_DIR: "/root/.pm2/logs/"
     },
     args: [
         "--netuid", "35",
