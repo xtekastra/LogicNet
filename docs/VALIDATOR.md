@@ -85,7 +85,6 @@ This setup allows you to run the Validator locally by hosting a vLLM server. Whi
 #### Prerequisites
 
 - **OpenAI API Key**: Obtain from the OpenAI platform dashboard.
-- **Wandb API Key**: Obtain from the Wandb platform dashboard.
 - **Python 3.10**
 - **PM2 Process Manager**: For running and managing the Validator process. *OPTIONAL*
 
@@ -117,6 +116,10 @@ This setup allows you to run the Validator locally by hosting a vLLM server. Whi
    echo "TASK_POOL_URL=server_datapool_endpoint"
    echo "VALIDATOR_USERNAME=datapool_username" >> .env
    echo "VALIDATOR_PASSWORD=datapool_account" >> .env
+   echo MINIO_ENDPOINT="server_minio_endpoint" >> .env
+   echo MINIO_ACCESS_KEY="minio_username" >> .env
+   echo MINIO_SECRET_KEY="minio_password" >> .env
+   echo APP_NAME="sn35-validator" >> .env
    echo "USE_TORCH=1" >> .env
    ```
 
@@ -157,25 +160,9 @@ This setup allows you to run the Validator locally by hosting a vLLM server. Whi
    ```bash
    --axon.port "your-public-open-port"
    ```
-
 ---
 
 ### Additional Features
-
-#### Wandb Integration
-
-Configure Wandb to track and analyze Validator performance.
-
-1. Add Wandb API key to `.env`:
-   ```bash
-   echo "WANDB_API_KEY=your_wandb_api_key" >> .env
-   ```
-2. It's already configured for mainnet as default.
-3. Run Validator with Wandb on Testnet:
-   ```bash
-   --wandb.project_name logicnet-testnet \
-   --wandb.entity ait-ai
-   ```
 
 ---
 

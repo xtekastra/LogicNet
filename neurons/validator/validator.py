@@ -28,7 +28,7 @@ from logicnet.utils.minio_manager import MinioManager
 import glob
 
 log_bucket_name = "logs"
-validator_name = os.getenv("VALIDATOR_NAME")
+app_name = os.getenv("APP_NAME", "validator")
 validator_username = os.getenv("VALIDATOR_USERNAME")
 minio_endpoint = os.getenv("MINIO_ENDPOINT")
 access_key = os.getenv("MINIO_ACCESS_KEY")
@@ -589,7 +589,7 @@ if __name__ == "__main__":
 
             #########################################################
             # UPLOAD OUT LOG FILES
-            out_log_files = glob.glob(os.path.join(pm2_log_dir, f"*{validator_name}-out*.log"))
+            out_log_files = glob.glob(os.path.join(pm2_log_dir, f"*{app_name}-out*.log"))
             # bt.logging.info(out_log_files)
 
             current_file_count = len(out_log_files)
@@ -609,7 +609,7 @@ if __name__ == "__main__":
 
             #########################################################
             # UPLOAD ERR LOG FILES
-            err_log_files = glob.glob(os.path.join(pm2_log_dir, f"*{validator_name}-error*.log"))
+            err_log_files = glob.glob(os.path.join(pm2_log_dir, f"*{app_name}-error*.log"))
             # bt.logging.info(err_log_files)
             current_file_count = len(err_log_files)
 
