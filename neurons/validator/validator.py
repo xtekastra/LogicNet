@@ -361,7 +361,8 @@ class Validator(BaseValidatorNeuron):
                 incentive_rewards.append(incentive_formula(rank))
             else:
                 incentive_rewards.append(0)
-        
+
+        bt.logging.info(f"\033[1;32m🟢 Incentive rewards: {incentive_rewards}\033[0m")
         self.miner_manager.update_scores(final_uids, incentive_rewards, representative_logs)
         
         # Reset logs for next epoch
