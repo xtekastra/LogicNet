@@ -18,7 +18,6 @@ import logicnet as ln
 from neurons.validator.validator_proxy import ValidatorProxy
 from logicnet.base.validator import BaseValidatorNeuron
 from logicnet.validator import MinerManager, LogicChallenger, LogicRewarder
-from logicnet.utils.wandb_manager import WandbManager
 from logicnet.utils.text_uts import modify_question
 from logicnet.protocol import LogicSynapse
 from neurons.validator.core.serving_queue import QueryQueue
@@ -28,12 +27,15 @@ from logicnet.utils.minio_manager import MinioManager
 import glob
 
 log_bucket_name = "logs"
-app_name = os.getenv("APP_NAME", "validator")
+app_name = os.getenv("APP_NAME", "sn35-validator")
 validator_username = os.getenv("VALIDATOR_USERNAME")
 minio_endpoint = os.getenv("MINIO_ENDPOINT")
 access_key = os.getenv("MINIO_ACCESS_KEY")
 secret_key = os.getenv("MINIO_SECRET_KEY")
-pm2_log_dir = os.getenv("PM2_LOG_DIR", "/root/.pm2/logs")
+pm2_log_dir = os.getenv("PM2_LOG_DIR", "~/.pm2/logs")
+last_err_file_name = ""
+last_out_file_name = ""
+
 
 def init_category(config=None, model_pool=None):
     category = {
@@ -105,10 +107,9 @@ class Validator(BaseValidatorNeuron):
         self.categories = init_category(self.config, self.model_pool)
         self.miner_manager = MinerManager(self)
         self.load_state()
-        self.update_scores_on_chain()
-        self.sync()
-        self.miner_manager.update_miners_identity()
-        self.wandb_manager = WandbManager(neuron = self)
+        # self.update_scores_on_chain()
+        # self.sync()
+        # self.miner_manager.update_miners_identity()
         self.query_queue = QueryQueue()
         if self.config.proxy.port:
             try:
@@ -131,7 +132,8 @@ class Validator(BaseValidatorNeuron):
         Query miners by batched from the serving queue then process challenge-generating -> querying -> rewarding in background by threads
         DEFAULT: 16 miners per batch, 600 seconds per loop.
         """
-        self.store_miner_infomation()
+        # self.store_miner_infomation()
+        self.push_logs_to_minio()
         bt.logging.info("\033[1;34m🔄 Updating available models & uids\033[0m")
         loop_base_time = self.config.loop_base_time  # default is 600s
         self.miner_manager.update_miners_identity()
@@ -139,15 +141,6 @@ class Validator(BaseValidatorNeuron):
         self.miner_uids = []
         self.miner_scores = []
         self.miner_reward_logs = []
-
-        # Set up wandb log
-        if not self.config.wandb.off:
-            today = datetime.date.today()
-            if (self.wandb_manager.wandb_start_date != today and 
-                hasattr(self.wandb_manager, 'wandb') and 
-                self.wandb_manager.wandb is not None):
-                self.wandb_manager.wandb.finish()
-                self.wandb_manager.init_wandb()
 
         # run in 600s
         loop_start = time.time()
@@ -191,8 +184,61 @@ class Validator(BaseValidatorNeuron):
         # Update scores on chain
         self.update_scores_on_chain()
         self.save_state()
-        self.store_miner_infomation()
+        # self.store_miner_infomation()
         bt.logging.info(f"\033[1;32m🟢 Validator loop completed in {time.time() - loop_start} seconds\033[0m")
+
+
+    def push_logs_to_minio(self):
+        #########################################################
+        # UPLOAD OUT LOG FILES
+        global last_err_file_name
+        global last_out_file_name
+        try:
+            minio_manager = MinioManager(minio_endpoint, access_key, secret_key)
+        except Exception as e:
+            bt.logging.error(f"Error initializing MinioManager: {e}")
+
+        try:
+            bt.logging.info(f"\033[1;32m🟢 Pushing out log files to MinIO\033[0m")
+            out_log_files = glob.glob(os.path.join(pm2_log_dir, f"*{app_name}-*out*.log"))
+            bt.logging.info(f"\033[1;32m🟢 Out log files: {out_log_files}\033[0m")
+
+            current_file_count = len(out_log_files)
+            # Detect rotation (new file added)
+            if current_file_count >= 2:
+                # A new file was created, so upload the latest previous file
+                previous_file = get_latest_previous_log_file(out_log_files)
+                if previous_file != last_out_file_name and previous_file:
+                    last_out_file_name = previous_file
+                    file_name = os.path.basename(previous_file)
+                    if file_name not in minio_manager.get_uploaded_files(log_bucket_name):
+                        bt.logging.info(f"Uploading {previous_file} to MinIO")
+                        if minio_manager.upload_file(previous_file, log_bucket_name, validator_username):
+                            bt.logging.info(f"\033[1;32m✅ Uploaded {file_name} to MinIO\033[0m")
+            #########################################################
+
+
+            #########################################################
+            # UPLOAD ERR LOG FILES
+            err_log_files = glob.glob(os.path.join(pm2_log_dir, f"*{app_name}-error*.log"))
+            # bt.logging.info(err_log_files)
+            current_file_count = len(err_log_files)
+
+            # Detect rotation (new file added)
+            if current_file_count >= 2:
+                # A new file was created, so upload the latest previous file
+                previous_file = get_latest_previous_log_file(err_log_files)
+                if previous_file != last_err_file_name and previous_file:
+                    last_err_file_name = previous_file
+                    file_name = os.path.basename(previous_file)
+                    if file_name not in minio_manager.get_uploaded_files(log_bucket_name):
+                        bt.logging.info(f"Uploading {previous_file} to MinIO")
+                        if minio_manager.upload_file(previous_file, log_bucket_name, validator_username):
+                            bt.logging.info(f"\033[1;32m✅ Uploaded {file_name} to MinIO\033[0m")
+            #########################################################
+        except Exception as e:
+            bt.logging.error(f"Error uploading log files: {e}")
+
 
     def run_async_query(self, category: str, uids: list[int], should_rewards: list[int]):
         loop = asyncio.new_event_loop()
@@ -265,7 +311,6 @@ class Validator(BaseValidatorNeuron):
 
                         logs_str = []
                         for log in unique_logs.values():
-                            self._log_wandb(log)
                             logs_str.append(
                                 f"Task ID: [{log['task_uid']}], Miner UID: {log['miner_uid']}, Reward: {log['reward']}, Correctness: {log['correctness']}, Similarity: {log['similarity']}, Process Time: {log['process_time']}, Miner Response: {log['miner_response']}, Ground Truth: {log['ground_truth']}"
                             )
@@ -530,114 +575,9 @@ class Validator(BaseValidatorNeuron):
         )
         thread.start()
 
-    def _log_wandb(self, log):
-        """
-        Log reward logs to wandb as a table with the following columns:
-            [
-                "miner_uid",
-                "miner_response",
-                "miner_reasoning"
-                "reward",
-                "correctness",
-                "similarity",
-                "processing_time",
-                "question",
-                "logic_question",
-                "ref_ground_truth",
-                "ground_truth_answer"                
-            ]
-        Each row in the table is for one UID, containing lists of their tasks, responses, scores, etc.
-        """
-        try:
-            # 1) Guard clauses
-            if not self.wandb_manager or not self.wandb_manager.wandb:
-                bt.logging.warning("Wandb is not initialized. Skipping logging.")
-                return
-            if not log:
-                bt.logging.warning("No reward logs available. Skipping wandb logging.")
-                return
-
-            # 2) Prepare the final data to log
-            wandb_data = {
-                "miner_uid":log["miner_uid"],
-                "task_uid": log["task_uid"],
-                "miner_response": log["miner_response"],
-                "miner_reasoning": log["miner_reasoning"],
-                "reward": log["reward"],
-                "correctness": log["correctness"],
-                "similarity": log["similarity"],
-                "processing_time": log["process_time"],
-                "question": log["question"],
-                "logic_question": log["logic_question"],
-                "ref_ground_truth": log["ref_ground_truth"],
-                "ground_truth": log["ground_truth"]
-            }
-
-            # 3) Log to wandb
-            self.wandb_manager.wandb.log(wandb_data, commit=True)
-
-            # 4) Debug
-            bt.logging.info(
-                f"Logged to wandb (epoch_or_step={self.step}):\n"
-                f"{json.dumps(wandb_data, indent=2, default=str)}"
-            )
-        except Exception as e:
-            bt.logging.error(f"Error logging to wandb: {e}")
-
 # The main function parses the configuration and runs the validator.
-if __name__ == "__main__":
-    last_err_file_name = ""
-    last_out_file_name = ""
-    
-    try:
-        minio_manager = MinioManager(minio_endpoint, access_key, secret_key)
-    except Exception as e:
-        bt.logging.error(f"Error initializing MinioManager: {e}")
-    
+if __name__ == "__main__":        
     with Validator() as validator:
         while True:
             bt.logging.info("\033[1;32m🟢 Validator running...\033[0m", time.time())
-
-            #########################################################
-            # UPLOAD OUT LOG FILES
-            try:
-                out_log_files = glob.glob(os.path.join(pm2_log_dir, f"*{app_name}-out*.log"))
-                # bt.logging.info(out_log_files)
-
-                current_file_count = len(out_log_files)
-                # Detect rotation (new file added)
-                if current_file_count >= 2:
-                    # A new file was created, so upload the latest previous file
-                    previous_file = get_latest_previous_log_file(out_log_files)
-                    if previous_file != last_out_file_name and previous_file:
-                        last_out_file_name = previous_file
-                        file_name = os.path.basename(previous_file)
-                        if file_name not in minio_manager.get_uploaded_files(log_bucket_name):
-                            bt.logging.info(f"Uploading {previous_file} to MinIO")
-                            if minio_manager.upload_file(previous_file, log_bucket_name, validator_username):
-                                bt.logging.info(f"\033[1;32m✅ Uploaded {file_name} to MinIO\033[0m")
-                #########################################################
-
-
-                #########################################################
-                # UPLOAD ERR LOG FILES
-                err_log_files = glob.glob(os.path.join(pm2_log_dir, f"*{app_name}-error*.log"))
-                # bt.logging.info(err_log_files)
-                current_file_count = len(err_log_files)
-
-                # Detect rotation (new file added)
-                if current_file_count >= 2:
-                    # A new file was created, so upload the latest previous file
-                    previous_file = get_latest_previous_log_file(err_log_files)
-                    if previous_file != last_err_file_name and previous_file:
-                        last_err_file_name = previous_file
-                        file_name = os.path.basename(previous_file)
-                        if file_name not in minio_manager.get_uploaded_files(log_bucket_name):
-                            bt.logging.info(f"Uploading {previous_file} to MinIO")
-                            if minio_manager.upload_file(previous_file, log_bucket_name, validator_username):
-                                bt.logging.info(f"\033[1;32m✅ Uploaded {file_name} to MinIO\033[0m")
-                #########################################################
-            except Exception as e:
-                bt.logging.error(f"Error uploading log files: {e}")
-
-            time.sleep(360)
+            time.sleep(60)

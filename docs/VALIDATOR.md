@@ -112,7 +112,6 @@ This setup allows you to run the Validator locally by hosting a vLLM server. Whi
 3. **Set Up the `.env` File**
    ```bash
    echo "OPENAI_API_KEY=your_openai_api_key" >> .env
-   echo "WANDB_API_KEY=your_wandb_api_key" >> .env
    echo "TASK_POOL_URL=server_datapool_endpoint"
    echo "VALIDATOR_USERNAME=datapool_username" >> .env
    echo "VALIDATOR_PASSWORD=datapool_account" >> .env
@@ -173,10 +172,6 @@ This setup allows you to run the Validator locally by hosting a vLLM server. Whi
   ```bash
   pm2 logs sn35-validator
   ```
-  - Please check the logs for more details on wandb for mainnet.
-    https://wandb.ai/ait-ai/logicnet-mainnet/runs
-  - Please check the logs for more details on wandb for testnet.
-    https://wandb.ai/ait-ai/logicnet-testnet/runs
 
 - **Common Issues**:
   - Missing API keys.
