@@ -1,3 +1,4 @@
+import re
 import torch
 import openai
 import sympy
@@ -232,6 +233,7 @@ class LogicRewarder:
                     return -1
                 
             clone_response = self.clean_response(response)
+            clone_response = clone_response.replace("-", " ")
             clone_response = str(random.choice(strings)) + clone_response + str(random.choice(strings))
             response_str = openai_client.chat.completions.create(
                 model=model_name,
@@ -247,6 +249,10 @@ class LogicRewarder:
                 temperature=0,
             ).choices[0].message.content.strip().lower()
             bt.logging.info(f"[CORRECTNESS] Trick detection: {response_str} ====> {response[:100]}")
+            if re.search(r"\{\{\s*answer\s*\}\}", response.lower()):
+                bt.logging.info(f"[CORRECTNESS] Miner response is a template: {response}")
+                return -1
+
             if "yes" in response_str:
                 return -1
         except Exception as e:
