@@ -61,7 +61,6 @@ class LogicSynapse(bt.Synapse):
         """
         self.raw_logic_question = ""
         self.ground_truth_answer = None
-        self.task_uid = str(uuid.uuid4())[:8]
         return self
 
     def deserialize_response(self):
