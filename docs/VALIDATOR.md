@@ -86,6 +86,7 @@ This setup allows you to run the Validator locally by hosting a vLLM server. Whi
 
 - **OpenAI API Key**: Obtain from the OpenAI platform dashboard.
 - **Python 3.10**
+- **Node v23.3.0**
 - **PM2 Process Manager**: For running and managing the Validator process. *OPTIONAL*
 
 #### Steps
