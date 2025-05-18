@@ -61,21 +61,21 @@ This setup allows you to run the Validator locally by hosting a vLLM server. Whi
 4. **Start the vLLM Server**
    ```bash
    . vllm/bin/activate
-   pm2 start "vllm serve Qwen/Qwen2.5-7B-Instruct --port 8000 --host 0.0.0.0" --name "sn35-vllm"
+   pm2 start "vllm serve Qwen/Qwen2.5-7B-Instruct --port 8000 --host 0.0.0.0" --name "sn35-vllm" --api-key your_vllm_key
    ```
    - If you want to run larger models on GPUs with less VRAM, there are several techniques you can use to optimize GPU memory utilization:
       - You can adjust the GPU memory utilization to maximize the available memory by using a flag like `--gpu_memory_utilization`. This allows the model to use a specified percentage of GPU memory.
       ```bash
-      pm2 start "vllm serve Qwen/Qwen2.5-7B-Instruct --gpu_memory_utilization 0.95 --port 8000 --host 0.0.0.0" --name "sn35-vllm" 
+      pm2 start "vllm serve Qwen/Qwen2.5-7B-Instruct --gpu_memory_utilization 0.95 --port 8000 --host 0.0.0.0" --name "sn35-vllm" --api-key your_vllm_key
       # This command sets the model to use 95% of the available GPU memory.
       ```
       - Using mixed precision (FP16) instead of full precision (FP32) reduces the amount of memory required to store model weights, which can significantly lower VRAM usage.
       ```bash
-      pm2 start "vllm serve Qwen/Qwen2.5-7B-Instruct --precision fp16 --gpu_memory_utilization 0.95 --port 8000 --host 0.0.0.0" --name "sn35-vllm"
+      pm2 start "vllm serve Qwen/Qwen2.5-7B-Instruct --precision fp16 --gpu_memory_utilization 0.95 --port 8000 --host 0.0.0.0" --name "sn35-vllm" --api-key your_vllm_key
       ```
       - If you have multiple GPUs, you can shard the model across them to distribute the memory load.
       ```bash
-      pm2 start "vllm serve Qwen/Qwen2.5-7B-Instruct --shard --port 8000 --host 0.0.0.0" --name "sn35-vllm"
+      pm2 start "vllm serve Qwen/Qwen2.5-7B-Instruct --shard --port 8000 --host 0.0.0.0" --name "sn35-vllm" --api-key your_vllm_key
       ```
 
 ---
