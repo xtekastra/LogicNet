@@ -98,7 +98,7 @@ This setup allows you to run the Validator locally by hosting a vLLM server. Whi
 
 2. **Delete pm2 log**
    
-   PM2_LOG_DIR: directory of the PM2 logs on your machine, default is `~/.pm2/logs`
+   PM2_LOG_DIR: directory of the PM2 logs on your machine, default is `/root/.pm2/logs`
    
    ```bash
    sudo rm -rf $PM2_LOG_DIR
@@ -130,7 +130,7 @@ This setup allows you to run the Validator locally by hosting a vLLM server. Whi
          MINIO_ENDPOINT: "minio_endpoint",
          MINIO_ACCESS_KEY: "minio_access_key",
          MINIO_SECRET_KEY: "minio_secret_key",
-         PM2_LOG_DIR: "/root/.pm2/logs/"
+         PM2_LOG_DIR: "/root/.pm2/logs/" # must be obsolute path
 
          # Can keep default
          APP_NAME: "sn35-validator",
