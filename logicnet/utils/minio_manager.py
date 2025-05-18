@@ -12,7 +12,7 @@ class MinioManager:
         
         self.minio_client = self.initialize_minio_client()
 
-    def initialize_minio_client(self):
+    def initialize_minio_client(self) -> Minio:
         """Initialize and return MinIO client."""
         return Minio(
             self.minio_endpoint,

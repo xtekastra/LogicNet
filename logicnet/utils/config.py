@@ -69,28 +69,6 @@ def add_args(cls, parser):
         help="If set, we dont save events to a log file.",
         default=False,
     )
-
-    parser.add_argument(
-        "--wandb.off",
-        action="store_true",
-        help="Turn off wandb.",
-        default=False,
-    )
-
-    parser.add_argument(
-        "--wandb.project_name",
-        type=str,
-        default="logicnet-mainnet",
-        help="Wandb project to log to.",
-    )
-
-    parser.add_argument(
-        "--wandb.entity",
-        type=str,
-        default="ait-ai",
-        help="Wandb entity to log to.",
-    )
-
     # Neuron type
     neuron_type = "validator" if "miner" not in cls.__name__.lower() else "miner"
 

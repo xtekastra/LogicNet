@@ -1,10 +1,14 @@
 import re
+import os
 import torch
 import openai
 import sympy
 import random
+import requests
 import bittensor as bt
 from concurrent import futures
+import time
+
 from logicnet.protocol import LogicSynapse
 from sentence_transformers import SentenceTransformer
 from logicnet.utils.model_selector import model_selector
@@ -24,6 +28,52 @@ class LogicRewarder:
         """
         self.model_pool = model_pool
         self.embedder = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
+        self.task_pool_url = os.getenv("TASK_POOL_URL")
+        if not self.task_pool_url:
+            raise ValueError("TASK_POOL_URL is not set")
+        self.access_token = None
+        self.cheat_words = []
+        self.last_update_cheat_words = time.time()
+        self.update_all_cheat_words()
+
+    def _login(self):
+        """Login to TaskPoolServer to get access token"""
+        try:
+            response = requests.post(
+                f"{self.task_pool_url}/auth/login",
+                json={
+                    "username": os.getenv("VALIDATOR_USERNAME"),
+                    "password": os.getenv("VALIDATOR_PASSWORD")
+                }
+            )
+            self.access_token = response.json()["access_token"]
+        except Exception as e:
+            bt.logging.error(f"Failed to login to TaskPoolServer: {e}")
+            self.access_token = None
+            raise
+
+    def update_all_cheat_words(self):
+        """Update all cheat words"""
+        if time.time() - self.last_update_cheat_words < 100:
+            return
+
+        bt.logging.info("Updating all cheat words")
+        self.last_update_cheat_words = time.time()
+        try:
+            self._login()
+            if not self.access_token:
+                raise ValueError("Failed to get access token")
+
+            headers = {"Authorization": f"Bearer {self.access_token}"}
+            response = requests.get(
+                f"{self.task_pool_url}/cheats",
+                headers=headers
+            )
+            self.cheat_words = [cheat_item["content"] for cheat_item in response.json()]
+            bt.logging.info(f"Updated all cheat words: {self.cheat_words}")
+        except Exception as e:
+            bt.logging.error(f"Failed to update all cheat words: {e}")
+            self.cheat_words = []
 
     def __call__(self, uids, responses: list[LogicSynapse], base_synapse: LogicSynapse):
         """Calculate reward for each response using similarity, correctness, and processing time.
@@ -37,6 +87,7 @@ class LogicRewarder:
         Returns:
             list[float]: List of rewards for each response.
         """
+        self.update_all_cheat_words()
         # Get the unique task UID from the base_synapse
         task_uid = base_synapse.task_uid
         valid_uids = [
@@ -226,15 +277,18 @@ class LogicRewarder:
         ## check trick case
         try:
             ## check with hard rule
-            strings = ['a', 'b', 'c', 'd', 'e'] ## add to response to avoid gpt cached the output
-            cheat_words = ["miner_answer", "<example>", "</", "preference>", "<preference"]
-            for cheat_word in cheat_words:
+            for cheat_word in self.cheat_words:
                 if cheat_word in response.lower():
+                    bt.logging.info(f"[CORRECTNESS] Miner response is a cheat word: {response}")
                     return -1
-                
+
+            if re.search(r"\{\{\s*answer\s*\}\}", response.lower()):
+                bt.logging.info(f"[CORRECTNESS] Miner response is a template: {response}")
+                return -1
+
+            ## check with soft rule
             clone_response = self.clean_response(response)
             clone_response = clone_response.replace("-", " ")
-            clone_response = str(random.choice(strings)) + clone_response + str(random.choice(strings))
             response_str = openai_client.chat.completions.create(
                 model=model_name,
                 messages=[
@@ -249,10 +303,6 @@ class LogicRewarder:
                 temperature=0,
             ).choices[0].message.content.strip().lower()
             bt.logging.info(f"[CORRECTNESS] Trick detection: {response_str} ====> {response[:100]}")
-            if re.search(r"\{\{\s*answer\s*\}\}", response.lower()):
-                bt.logging.info(f"[CORRECTNESS] Miner response is a template: {response}")
-                return -1
-
             if "yes" in response_str:
                 return -1
         except Exception as e:

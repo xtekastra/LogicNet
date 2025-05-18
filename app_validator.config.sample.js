@@ -27,8 +27,10 @@ module.exports = {
         "--llm_client.vllm_url", "your_vllm_endpoint",
         "--llm_client.vllm_model", "your_vllm_model_name",
         "--llm_client.vllm_key", "your_vllm_key",
-        "--wandb.project_name", "logicnet-mainnet",
         "--logging.debug",
+        "--batch_size", "8",
+        "--batch_number", "8",
+        "--loop_base_time", "600",
     ],
     autorestart: true,
   }]
