@@ -32,10 +32,17 @@ validator_username = os.getenv("VALIDATOR_USERNAME")
 minio_endpoint = os.getenv("MINIO_ENDPOINT")
 access_key = os.getenv("MINIO_ACCESS_KEY")
 secret_key = os.getenv("MINIO_SECRET_KEY")
-pm2_log_dir = os.getenv("PM2_LOG_DIR", "~/.pm2/logs")
+pm2_log_dir = os.getenv("PM2_LOG_DIR", "/root/.pm2/logs")
 last_err_file_name = ""
 last_out_file_name = ""
 
+if not os.path.exists(pm2_log_dir):
+    os.makedirs(pm2_log_dir)
+
+bt.logging.info(f"PM2_LOG_DIR: {pm2_log_dir}")
+bt.logging.info(f"APP_NAME: {app_name}")
+bt.logging.info(f"VALIDATOR_USERNAME: {validator_username}")
+bt.logging.info(f"MINIO_ENDPOINT: {minio_endpoint}")
 
 def init_category(config=None, model_pool=None):
     category = {
@@ -104,6 +111,7 @@ class Validator(BaseValidatorNeuron):
             bt.logging.warning("All models are invalid. Validator cannot proceed.")
             raise ValueError("All models are invalid. Please configure at least one model and restart the validator.")
         
+        self.push_logs_to_minio()
         self.categories = init_category(self.config, self.model_pool)
         self.miner_manager = MinerManager(self)
         self.load_state()
@@ -200,8 +208,9 @@ class Validator(BaseValidatorNeuron):
 
         try:
             bt.logging.info(f"\033[1;32m🟢 Pushing out log files to MinIO\033[0m")
-            out_log_files = glob.glob(os.path.join(pm2_log_dir, f"*{app_name}-*out*.log"))
-            bt.logging.info(f"\033[1;32m🟢 Out log files: {out_log_files}\033[0m")
+            log_regex = os.path.join(pm2_log_dir, f"*{app_name}*out*.log")
+            out_log_files = glob.glob(log_regex)
+            bt.logging.info(f"\033[1;32m🟢 Out log files: {out_log_files}, regex: {log_regex}\033[0m")
 
             current_file_count = len(out_log_files)
             # Detect rotation (new file added)

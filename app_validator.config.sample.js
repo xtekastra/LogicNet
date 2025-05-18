@@ -14,7 +14,7 @@ module.exports = {
         MINIO_ENDPOINT: "minio_endpoint",
         MINIO_ACCESS_KEY: "minio_access_key",
         MINIO_SECRET_KEY: "minio_secret_key",
-        PM2_LOG_DIR: "~/.pm2/logs/"
+        PM2_LOG_DIR: "/root/.pm2/logs/"
     },
     args: [
         "--netuid", "35",
