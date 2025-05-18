@@ -36,8 +36,10 @@ pm2_log_dir = os.getenv("PM2_LOG_DIR", "/root/.pm2/logs")
 last_err_file_name = ""
 last_out_file_name = ""
 
+# check if the pm2_log_dir is valid
 if not os.path.exists(pm2_log_dir):
-    os.makedirs(pm2_log_dir)
+    bt.logging.error(f"PM2 log directory does not exist: {pm2_log_dir}")
+    raise ValueError(f"PM2 log directory does not exist: {pm2_log_dir}")
 
 bt.logging.info(f"PM2_LOG_DIR: {pm2_log_dir}")
 bt.logging.info(f"APP_NAME: {app_name}")
@@ -80,6 +82,11 @@ class Validator(BaseValidatorNeuron):
         """
         super(Validator, self).__init__(config=config)
         bt.logging.info("\033[1;32m🧠 load_state()\033[0m")
+
+        try:
+            self.minio_manager = MinioManager(minio_endpoint, access_key, secret_key)
+        except Exception as e:
+            bt.logging.error(f"Error initializing MinioManager: {e}")
 
         ### Initialize model rotation pool ###
         self.model_pool = {}
@@ -201,10 +208,6 @@ class Validator(BaseValidatorNeuron):
         # UPLOAD OUT LOG FILES
         global last_err_file_name
         global last_out_file_name
-        try:
-            minio_manager = MinioManager(minio_endpoint, access_key, secret_key)
-        except Exception as e:
-            bt.logging.error(f"Error initializing MinioManager: {e}")
 
         try:
             bt.logging.info(f"\033[1;32m🟢 Pushing out log files to MinIO\033[0m")
@@ -220,9 +223,9 @@ class Validator(BaseValidatorNeuron):
                 if previous_file != last_out_file_name and previous_file:
                     last_out_file_name = previous_file
                     file_name = os.path.basename(previous_file)
-                    if file_name not in minio_manager.get_uploaded_files(log_bucket_name):
+                    if file_name not in self.minio_manager.get_uploaded_files(log_bucket_name):
                         bt.logging.info(f"Uploading {previous_file} to MinIO")
-                        if minio_manager.upload_file(previous_file, log_bucket_name, validator_username):
+                        if self.minio_manager.upload_file(previous_file, log_bucket_name, validator_username):
                             bt.logging.info(f"\033[1;32m✅ Uploaded {file_name} to MinIO\033[0m")
             #########################################################
 
@@ -240,9 +243,9 @@ class Validator(BaseValidatorNeuron):
                 if previous_file != last_err_file_name and previous_file:
                     last_err_file_name = previous_file
                     file_name = os.path.basename(previous_file)
-                    if file_name not in minio_manager.get_uploaded_files(log_bucket_name):
+                    if file_name not in self.minio_manager.get_uploaded_files(log_bucket_name):
                         bt.logging.info(f"Uploading {previous_file} to MinIO")
-                        if minio_manager.upload_file(previous_file, log_bucket_name, validator_username):
+                        if self.minio_manager.upload_file(previous_file, log_bucket_name, validator_username):
                             bt.logging.info(f"\033[1;32m✅ Uploaded {file_name} to MinIO\033[0m")
             #########################################################
         except Exception as e:
