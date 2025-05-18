@@ -96,7 +96,15 @@ This setup allows you to run the Validator locally by hosting a vLLM server. Whi
    cd logicnet
    ```
 
-2. **Install the Requirements**
+2. **Delete pm2 log**
+   
+   PM2_LOG_DIR: directory of the PM2 logs on your machine, default is `~/.pm2/logs`
+   
+   ```bash
+   sudo rm -rf $PM2_LOG_DIR
+   ```
+
+3. **Install the Requirements**
    ```bash
    python -m venv main
    . main/bin/activate
@@ -108,62 +116,106 @@ This setup allows you to run the Validator locally by hosting a vLLM server. Whi
    pip install -e .
    pip uninstall uvloop -y
    ```
+4. **Run the validator code**
 
-3. **Set Up the `.env` File**
-   ```bash
-   echo "OPENAI_API_KEY=your_openai_api_key" >> .env
-   echo "TASK_POOL_URL=server_datapool_endpoint"
-   echo "VALIDATOR_USERNAME=datapool_username" >> .env
-   echo "VALIDATOR_PASSWORD=datapool_account" >> .env
-   echo MINIO_ENDPOINT="server_minio_endpoint" >> .env
-   echo MINIO_ACCESS_KEY="minio_username" >> .env
-   echo MINIO_SECRET_KEY="minio_password" >> .env
-   echo APP_NAME="sn35-validator" >> .env
-   echo "USE_TORCH=1" >> .env
-   ```
+   4.1 **[Recommend] Option 1: Run pm2 by config file**
+      - Create file `app_validator.config.js` base on `app_validator.config.sample.js`
+      - Update `env` in `app_validator.config.js` by your information:
+      ```bash
+         # Need to change
+         OPENAI_API_KEY: "your_openai_key",
+         VALIDATOR_USERNAME: "datapool_username",
+         VALIDATOR_PASSWORD: "datapool_password",
+         TASK_POOL_URL: "server_datapool_endpoint",
+         MINIO_ENDPOINT: "minio_endpoint",
+         MINIO_ACCESS_KEY: "minio_access_key",
+         MINIO_SECRET_KEY: "minio_secret_key",
+         PM2_LOG_DIR: "/root/.pm2/logs/"
 
-### Step 3: Run the Validator
+         # Can keep default
+         APP_NAME: "sn35-validator",
+         PYTHONPATH: './:${PYTHONPATH}',
+         USE_TORCH: 1,
+      ```
+      - Update `args`:
+      ```bash
+         # Need to change
+         "--wallet.name", "your_wallet_name",
+         "--wallet.hotkey", "your_hotkey",
+         "--llm_client.vllm_url", "your_vllm_endpoint",
+         "--llm_client.vllm_model", "your_vllm_model_name",
+         "--llm_client.vllm_key", "your_vllm_key",
+         
+         # Can keep default
+         "--netuid", "35",
+         "--subtensor.network", "finney",
+         "--neuron_type", "validator",
+         "--llm_client.gpt_url", "https://api.openai.com/v1",
+         "--llm_client.gpt_model", "gpt-4o-mini",
+         "--logging.debug",
+         "--batch_size", "8",
+         "--batch_number", "8",
+         "--loop_base_time", "600",
+      ```
 
-1. **Activate Virtual Environment**
-   ```bash
-   . main/bin/activate
-   ```
+   4.2 **Option 2: Run validator by pm2 command**
 
-2. **Source the `.env` File**
-   ```bash
-   source .env
-   ```
+   - Set Up the `.env` File
+      ```bash
+      echo "OPENAI_API_KEY=your_openai_api_key" >> .env
+      echo "TASK_POOL_URL=server_datapool_endpoint"
+      echo "VALIDATOR_USERNAME=datapool_username" >> .env
+      echo "VALIDATOR_PASSWORD=datapool_account" >> .env
+      echo MINIO_ENDPOINT="server_minio_endpoint" >> .env
+      echo MINIO_ACCESS_KEY="minio_username" >> .env
+      echo MINIO_SECRET_KEY="minio_password" >> .env
+      echo APP_NAME="sn35-validator" >> .env
+      echo PM2_LOG_DIR: "pm2_log_dir/" >> .env
+      echo "USE_TORCH=1" >> .env
+      ```
 
-3. **Start the Validator**
-   ```bash
-   pm2 start python --name "sn35-validator" -- neurons/validator/validator.py \
-      --netuid 35 \
-      --wallet.name "your-wallet-name" \
-      --wallet.hotkey "your-hotkey-name" \
-      --subtensor.network finney \
-      --neuron_type validator \
-      --logging.debug
-   ```
+   - Activate Virtual Environment**
+      ```bash
+      . main/bin/activate
+      ```
 
-   > ***Optional Flags*** (incase you want to run the validator with different configurations)
-   ```
-      --llm_client.gpt_url https://api.openai.com/v1 \
-      --llm_client.gpt_model gpt-4o-mini \
+   - Source the `.env` File**
+      ```bash
+      source .env
+      ```
 
-      --llm_client.vllm_url 0.0.0.0:8000/v1 \
-      --llm_client.vllm_model Qwen/Qwen2.5-7B-Instruct \
-      --llm_client.vllm_key xyz \ 
-   ```
+   - Start the Validator
+      ```bash
+      pm2 start python --name "sn35-validator" -- neurons/validator/validator.py \
+         --netuid 35 \
+         --wallet.name "your-wallet-name" \
+         --wallet.hotkey "your-hotkey-name" \
+         --subtensor.network finney \
+         --neuron_type validator \
+         --logging.debug
+      ```
 
-4. **Enable Public Access (Optional)** *For recieving challenges from the frontend app*
-   ```bash
-   --axon.port "your-public-open-port"
-   ```
----
+      > ***Optional Flags*** (incase you want to run the validator with different configurations)
+      ```
+         --llm_client.gpt_url https://api.openai.com/v1 \
+         --llm_client.gpt_model gpt-4o-mini \
 
-### Additional Features
+         --llm_client.vllm_url 0.0.0.0:8000/v1 \
+         --llm_client.vllm_model Qwen/Qwen2.5-7B-Instruct \
+         --llm_client.vllm_key xyz \ 
+      ```
 
----
+      Enable Public Access (Optional) *For recieving challenges from the frontend app*
+      ```bash
+      --axon.port "your-public-open-port"
+      ```
+
+### IMPORTANT NOTE
+- Ensure APP_NAME in the .env file matches the PM2 app name exactly. This is important to ensure that you find the correct location for the log files and upload them to minio
+- Make sure the PM2_LOG_DIR is correct with "ls $PM2_LOG_DIR
+". The default is /root/.pm2/logs, but you may need to set a different value depending on your server. Verify carefully with your machine, set the path to absolute
+- Delete old log files before rerunning the code to avoid issues from large files generated by old code version: rm -rf $PM2_LOG_DIR.
+- Check the logs immediately after restarting to identify any issues with the code.
 
 ### Troubleshooting & Support
 
