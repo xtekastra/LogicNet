@@ -600,41 +600,44 @@ if __name__ == "__main__":
 
             #########################################################
             # UPLOAD OUT LOG FILES
-            out_log_files = glob.glob(os.path.join(pm2_log_dir, f"*{app_name}-out*.log"))
-            # bt.logging.info(out_log_files)
+            try:
+                out_log_files = glob.glob(os.path.join(pm2_log_dir, f"*{app_name}-out*.log"))
+                # bt.logging.info(out_log_files)
 
-            current_file_count = len(out_log_files)
-            # Detect rotation (new file added)
-            if current_file_count >= 2:
-                # A new file was created, so upload the latest previous file
-                previous_file = get_latest_previous_log_file(out_log_files)
-                if previous_file != last_out_file_name and previous_file:
-                    last_out_file_name = previous_file
-                    file_name = os.path.basename(previous_file)
-                    if file_name not in minio_manager.get_uploaded_files(log_bucket_name):
-                        bt.logging.info(f"Uploading {previous_file} to MinIO")
-                        if minio_manager.upload_file(previous_file, log_bucket_name, validator_username):
-                            bt.logging.info(f"\033[1;32m✅ Uploaded {file_name} to MinIO\033[0m")
-            #########################################################
+                current_file_count = len(out_log_files)
+                # Detect rotation (new file added)
+                if current_file_count >= 2:
+                    # A new file was created, so upload the latest previous file
+                    previous_file = get_latest_previous_log_file(out_log_files)
+                    if previous_file != last_out_file_name and previous_file:
+                        last_out_file_name = previous_file
+                        file_name = os.path.basename(previous_file)
+                        if file_name not in minio_manager.get_uploaded_files(log_bucket_name):
+                            bt.logging.info(f"Uploading {previous_file} to MinIO")
+                            if minio_manager.upload_file(previous_file, log_bucket_name, validator_username):
+                                bt.logging.info(f"\033[1;32m✅ Uploaded {file_name} to MinIO\033[0m")
+                #########################################################
 
 
-            #########################################################
-            # UPLOAD ERR LOG FILES
-            err_log_files = glob.glob(os.path.join(pm2_log_dir, f"*{app_name}-error*.log"))
-            # bt.logging.info(err_log_files)
-            current_file_count = len(err_log_files)
+                #########################################################
+                # UPLOAD ERR LOG FILES
+                err_log_files = glob.glob(os.path.join(pm2_log_dir, f"*{app_name}-error*.log"))
+                # bt.logging.info(err_log_files)
+                current_file_count = len(err_log_files)
 
-            # Detect rotation (new file added)
-            if current_file_count >= 2:
-                # A new file was created, so upload the latest previous file
-                previous_file = get_latest_previous_log_file(err_log_files)
-                if previous_file != last_err_file_name and previous_file:
-                    last_err_file_name = previous_file
-                    file_name = os.path.basename(previous_file)
-                    if file_name not in minio_manager.get_uploaded_files(log_bucket_name):
-                        bt.logging.info(f"Uploading {previous_file} to MinIO")
-                        if minio_manager.upload_file(previous_file, log_bucket_name, validator_username):
-                            bt.logging.info(f"\033[1;32m✅ Uploaded {file_name} to MinIO\033[0m")
-            #########################################################
+                # Detect rotation (new file added)
+                if current_file_count >= 2:
+                    # A new file was created, so upload the latest previous file
+                    previous_file = get_latest_previous_log_file(err_log_files)
+                    if previous_file != last_err_file_name and previous_file:
+                        last_err_file_name = previous_file
+                        file_name = os.path.basename(previous_file)
+                        if file_name not in minio_manager.get_uploaded_files(log_bucket_name):
+                            bt.logging.info(f"Uploading {previous_file} to MinIO")
+                            if minio_manager.upload_file(previous_file, log_bucket_name, validator_username):
+                                bt.logging.info(f"\033[1;32m✅ Uploaded {file_name} to MinIO\033[0m")
+                #########################################################
+            except Exception as e:
+                bt.logging.error(f"Error uploading log files: {e}")
 
-            time.sleep(60)
+            time.sleep(360)
