@@ -7,6 +7,8 @@ from logicnet.protocol import LogicSynapse, Information
 from logicnet.miner.forward import solve
 import traceback
 import openai
+import httpx
+
 
 class Miner(BaseMinerNeuron):
     def __init__(self, config=None):
@@ -31,6 +33,25 @@ class Miner(BaseMinerNeuron):
             api_key=self.config.miner.llm_client.key,
         )
 
+        print(self.config.miner.llm_client.base_url)
+
+    async def solve_task(self, synapse: LogicSynapse) -> LogicSynapse:
+        try:
+            bt.logging.info(f"Received synapse: {synapse}")
+            logic_question: str = synapse.logic_question
+            async with httpx.AsyncClient(timeout=180) as client:
+                response = await client.post(self.config.miner.llm_client.base_url, json={'logic_question':logic_question})
+                data = response.json()
+                synapse.logic_reasoning = data['logic_reasoning']
+                synapse.logic_answer = data['logic_answer']
+
+            bt.logging.info(f"Logic answer: {synapse.logic_answer}")
+            bt.logging.info(f"Logic reasoning: {synapse.logic_reasoning}")
+            return synapse
+        except Exception as e:
+            bt.logging.error(f"Error in forward: {e}")
+            traceback.print_exc()
+
     async def forward(self, synapse: LogicSynapse) -> LogicSynapse:
         """
         Forward pass for the miner neuron. This function is called when a synapse is received by the miner neuron.
@@ -40,10 +61,8 @@ class Miner(BaseMinerNeuron):
         try:
             self.num_processing_requests += 1
             bt.logging.info(f"\033[1;33;44m🚀 Start processing request {self.num_processing_requests}\033[0m")
-            synapse = await solve(
-                synapse=synapse,
-                openai_client=self.openai_client,
-                model=self.config.miner.llm_client.model,
+            synapse = await self.solve_task(
+                synapse=synapse
             )
             self.total_request_in_interval += 1
             
